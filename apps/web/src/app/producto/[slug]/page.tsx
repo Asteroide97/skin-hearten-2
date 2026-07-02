@@ -1,33 +1,33 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+
 import { notFound } from "next/navigation";
 
 import { CheckCircleIcon } from "@/components/shared/icons";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { AddToCartButton } from "@/components/store/add-to-cart-button";
 import { EditorialFigure } from "@/components/store/editorial-figure";
 import { ProductReviewsSection } from "@/components/store/product-reviews-section";
+import { RoutineBuilderTrigger } from "@/components/store/routine-builder-trigger";
 import { ProductViewTracker } from "@/components/store/product-view-tracker";
 import { formatCurrency } from "@/lib/format";
 import { createEmptyProductReviewSummary } from "@/lib/product-reviews";
 import { getProductReviews } from "@/lib/product-reviews-api";
-import { getProductBySlug, getProducts } from "@/lib/storefront-api";
-import type { Product } from "@/lib/types";
+import { getProductBySlug } from "@/lib/storefront-api";
 
 type ProductDetailPageProps = {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{
+    category?: string;
+    source?: string;
+  }>;
 };
 
 type ProductExperience = {
   benefitCards: Array<{ title: string; description: string; tone: string }>;
-  editorialComplements: Product[];
   idealFor: string[];
   ingredientCards: Array<{ name: string; effect: string }>;
   notRecommendedIf: string;
-  resultTimeline: Array<{ label: string; title: string; description: string }>;
-  routineSteps: Array<{ label: string; note: string; product: Product; slot: string; isCurrent: boolean }>;
   usageTimeline: Array<{ label: string; title: string; description: string }>;
 };
 
@@ -65,11 +65,11 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
   };
 }
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+export default async function ProductDetailPage({ params, searchParams }: ProductDetailPageProps) {
   const { slug } = await params;
-  const [product, products, reviewResult] = await Promise.all([
+  const query = await searchParams;
+  const [product, reviewResult] = await Promise.all([
     getProductBySlug(slug),
-    getProducts(),
     getProductReviews(slug),
   ]);
 
@@ -81,16 +81,12 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     ? reviewResult.data
     : createEmptyProductReviewSummary(Number(product.id));
 
-  const related = products
-    .filter((entry) => entry.category === product.category && entry.id !== product.id)
-    .slice(0, 2);
-  const complementary = products
-    .filter((entry) => entry.category !== product.category && entry.id !== product.id)
-    .slice(0, 4);
-  const experience = buildProductExperience(product, products, related, complementary);
+  const experience = buildProductExperience(product);
+  const sourceHint = query.source === "category" ? "category" : "product";
+  const categoryHint = query.category ?? product.category;
 
   return (
-    <div className="product-page mx-auto max-w-[1320px] space-y-16 px-5 py-8 sm:px-6 lg:px-8 lg:space-y-20">
+    <div className="product-page mx-auto max-w-[1180px] space-y-12 px-5 py-8 sm:px-6 lg:px-8 lg:space-y-14">
       <ProductViewTracker
         category={product.category}
         price={product.price}
@@ -98,40 +94,28 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         productName={product.name}
       />
 
-      <section className="grid gap-8 border-b border-stone-200 pb-14 lg:grid-cols-[1.28fr_0.72fr] lg:items-start">
-        <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+      <section className="grid gap-8 border-b border-stone-200 pb-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+        <div>
           <EditorialFigure
-            className="min-h-[720px] lg:row-span-2"
+            className="min-h-[640px]"
             description={product.highlight}
             frame="portrait"
-            label="Hero frame"
+            label="Producto"
             title={product.name}
             tone="linen"
           />
-          <EditorialFigure
-            className="min-h-[350px]"
-            description={product.description}
-            frame="texture"
-            label="What it shifts"
-            title={product.concerns[0] ?? product.category}
-            tone="blush"
-          />
-          <EditorialFigure
-            className="min-h-[350px]"
-            description={product.usage[0]}
-            frame="vanity"
-            label="Daily gesture"
-            title={product.highlight}
-            tone="mist"
-          />
         </div>
 
-        <div className="space-y-8 lg:sticky lg:top-24">
+        <div className="space-y-6 lg:pl-4">
           <div className="space-y-4">
-            <h1 className="font-serif text-[3.2rem] leading-[0.92] text-stone-950 sm:text-[4rem]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">{product.brand}</p>
+            <h1 className="font-serif text-[3.1rem] leading-[0.92] text-stone-950 sm:text-[3.9rem]">
               {product.name}
             </h1>
             <p className="max-w-lg text-base leading-8 text-stone-600">{product.highlight}</p>
+            <p className="max-w-lg text-sm leading-7 text-stone-500">
+              {product.benefits[0] ?? product.description}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-end gap-4">
@@ -146,36 +130,32 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <AddToCartButton
-              className="btn-primary"
-              label="Anadir a mi rutina"
-              name={product.name}
-              price={product.price}
-              productId={product.id}
-              slug={product.slug}
+            <RoutineBuilderTrigger
+              buttonClassName="btn-primary"
+              categoryHint={categoryHint}
+              label="Agregar a mi rutina"
+              product={product}
+              sourceHint={sourceHint}
             />
-            <a className="btn-secondary" href="#como-usarlo">
-              Ver como se usa
+            <a className="btn-secondary" href="#opiniones">
+              Ver opiniones
             </a>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-8 lg:grid-cols-[0.78fr_1.22fr]" id="para-quien">
+      <section className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]" id="para-quien">
         <div className="space-y-4">
           <SectionHeading
-            eyebrow="Problema que resuelve"
-            title="Para quien si tiene sentido"
-            description="Piensa en este producto como una decision de piel, no de categoria."
+            eyebrow="Para quien es"
+            title="Responde primero si este producto si es para ti"
+            description="Antes de pensar en una rutina completa, aclara si encaja con lo que tu piel necesita hoy."
           />
-          <p className="max-w-md text-sm leading-7 text-stone-600">
-            Si tu objetivo hoy es {formatJoinedList(product.concerns)} y tu piel tiende a {formatJoinedList(product.skinTypes)}, esta formula entra con claridad.
-          </p>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <article className="rounded-[2rem] bg-[#f7efe7] p-6 sm:p-7">
-            <p className="section-label">Para quien es?</p>
+            <p className="section-label">Ideal para...</p>
             <div className="mt-5 grid gap-3">
               {experience.idealFor.map((item) => (
                 <div className="flex items-start gap-3 text-sm leading-7 text-stone-700" key={item}>
@@ -193,10 +173,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
       </section>
 
-      <section className="space-y-8 border-y border-stone-200 py-14">
+      <section className="space-y-8 border-y border-stone-200 py-10">
         <SectionHeading
-          eyebrow="Como funciona"
-          title="La formula acompana un cambio visible sin sentirse complicada"
+          eyebrow="Beneficios"
+          title="Lo que deberias sentir cuando si encaja con tu piel"
           description={product.description}
         />
 
@@ -215,12 +195,12 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
       <section className="space-y-8" id="como-usarlo">
         <SectionHeading
-          eyebrow="Como se usa"
-          title="Una rutina clara sostiene mejor la transformacion"
-          description="Manana, noche, frecuencia y una expectativa realista. Nada mas."
+          eyebrow="Como usarlo"
+          title="Piensalo como un ritmo simple"
+          description="Manana, noche y frecuencia. Nada mas."
         />
 
-        <div className="grid gap-4 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           {experience.usageTimeline.map((entry, index) => (
             <article className="rounded-[2rem] border border-stone-200 bg-[#fffaf7] p-5 sm:p-6" key={entry.label}>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">{entry.label}</p>
@@ -237,91 +217,16 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       <section className="space-y-8">
         <SectionHeading
           eyebrow="Ingredientes"
-          title="Lo importante no es memorizar el INCI"
-          description="Lo importante es saber que hace cada pieza dentro de tu rutina."
+          title="Que hace cada pieza dentro de la formula"
+          description="No necesitas memorizar la lista completa. Solo entender para que esta ahi."
         />
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-x-6 gap-y-4 border-t border-stone-200 pt-2 md:grid-cols-2 xl:grid-cols-3">
           {experience.ingredientCards.map((ingredient) => (
-            <article className="rounded-[2rem] border border-stone-200 bg-white p-5 sm:p-6" key={ingredient.name}>
-              <p className="section-label">Ingrediente</p>
-              <h3 className="mt-4 font-serif text-[2rem] leading-[0.98] text-stone-950">{ingredient.name}</h3>
-              <p className="mt-4 text-sm leading-7 text-stone-600">{ingredient.effect}</p>
+            <article className="border-b border-stone-200 py-4" key={ingredient.name}>
+              <h3 className="font-serif text-[1.65rem] leading-[1.02] text-stone-950">{ingredient.name}</h3>
+              <p className="mt-2 text-sm leading-7 text-stone-600">{ingredient.effect}</p>
             </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-8 rounded-[2.4rem] bg-[#f3e8de] p-6 sm:p-8">
-        <SectionHeading
-          eyebrow="Combinalo con"
-          title="Piensalo dentro de una rutina, no como un paso suelto"
-          description="Cada paso ayuda a que la formula se entienda mejor en la piel."
-        />
-
-        <div className="grid gap-4 lg:grid-cols-4">
-          {experience.routineSteps.map((step, index) => (
-            <article
-              className={`rounded-[2rem] p-5 sm:p-6 ${step.isCurrent ? "bg-stone-950 text-white" : "bg-white/80 text-stone-900"}`}
-              key={`${step.slot}-${step.product.id}`}
-            >
-              <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${step.isCurrent ? "text-white/70" : "text-stone-500"}`}>
-                Paso {index + 1}
-              </p>
-              <p className={`mt-3 text-sm font-semibold ${step.isCurrent ? "text-white/80" : "text-stone-700"}`}>
-                {step.slot}
-              </p>
-              <h3 className="mt-4 font-serif text-[2rem] leading-[0.98]">{step.product.name}</h3>
-              <p className={`mt-3 text-sm leading-7 ${step.isCurrent ? "text-white/75" : "text-stone-600"}`}>
-                {step.note}
-              </p>
-              <div className="mt-5">
-                <Link
-                  className={`inline-flex text-sm font-semibold ${step.isCurrent ? "text-white" : "text-stone-950"}`}
-                  href={`/producto/${step.product.slug}`}
-                >
-                  {step.label}
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-8">
-        <SectionHeading
-          eyebrow="Resultados esperados"
-          title="Lo que puedes empezar a notar con constancia"
-          description="Sin promesas medicas. Solo una lectura honesta de como suele responder la piel."
-        />
-
-        <div className="grid gap-4 lg:grid-cols-4">
-          {experience.resultTimeline.map((stage) => (
-            <article className="rounded-[2rem] border border-stone-200 bg-white p-5 sm:p-6" key={stage.label}>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">{stage.label}</p>
-              <h3 className="mt-4 font-serif text-[2rem] leading-[0.98] text-stone-950">{stage.title}</h3>
-              <p className="mt-4 text-sm leading-7 text-stone-600">{stage.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-8 rounded-[2.4rem] bg-[#fbf5ee] p-6 sm:p-8">
-        <SectionHeading
-          eyebrow="Preguntas frecuentes"
-          title="Lo esencial, respondido con calma"
-          description="Sin tecnicismos innecesarios. Solo lo que ayuda a decidir mejor."
-        />
-
-        <div className="grid gap-4">
-          {product.faq.map((entry) => (
-            <details className="group rounded-[1.7rem] border border-stone-200 bg-white px-5 py-4 sm:px-6" key={entry.question}>
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
-                <span className="text-base font-semibold text-stone-900">{entry.question}</span>
-                <span className="text-sm text-stone-500 transition group-open:rotate-45">+</span>
-              </summary>
-              <p className="pt-4 text-sm leading-7 text-stone-600">{entry.answer}</p>
-            </details>
           ))}
         </div>
       </section>
@@ -334,60 +239,28 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         />
       </div>
 
-      <section className="space-y-8 border-t border-stone-200 pt-14">
-        <SectionHeading
-          eyebrow="Productos complementarios"
-          title="Si quieres seguir construyendo la transformacion"
-          description="Una salida mas editorial para completar la rutina sin caer en un grid plano."
-        />
-
-        <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
-          {experience.editorialComplements[0] ? (
-            <Link
-              className="group rounded-[2.3rem] bg-[#f7efe7] p-6 sm:p-8"
-              href={`/producto/${experience.editorialComplements[0].slug}`}
-            >
-              <p className="section-label">Empieza por aqui</p>
-              <h3 className="mt-5 font-serif text-[2.8rem] leading-[0.94] text-stone-950 transition group-hover:translate-x-1">
-                {experience.editorialComplements[0].name}
-              </h3>
-              <p className="mt-4 max-w-xl text-sm leading-7 text-stone-600">
-                {experience.editorialComplements[0].highlight}
-              </p>
-              <p className="mt-8 text-sm font-semibold text-stone-950">
-                {formatCurrency(experience.editorialComplements[0].price)}
-              </p>
-            </Link>
-          ) : null}
-
-          <div className="grid gap-4">
-            {experience.editorialComplements.slice(1, 3).map((entry, index) => (
-              <Link
-                className={`rounded-[2rem] p-6 sm:p-7 ${index === 0 ? "bg-white" : "bg-[#fbf4ec]"}`}
-                href={`/producto/${entry.slug}`}
-                key={entry.id}
-              >
-                <p className="section-label">{index === 0 ? "Paso siguiente" : "Tambien puede gustarte"}</p>
-                <h3 className="mt-4 font-serif text-[2rem] leading-[0.98] text-stone-950">{entry.name}</h3>
-                <p className="mt-3 text-sm leading-7 text-stone-600">{entry.highlight}</p>
-                <p className="mt-6 text-sm font-semibold text-stone-950">{formatCurrency(entry.price)}</p>
-              </Link>
-            ))}
+      <section className="border-t border-stone-200 pt-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Decision final</p>
+            <p className="mt-2 font-serif text-[2rem] leading-[0.98] text-stone-950">
+              Si es para tu piel, sigue con la rutina.
+            </p>
           </div>
+          <RoutineBuilderTrigger
+            buttonClassName="btn-primary"
+            categoryHint={categoryHint}
+            label="Agregar a mi rutina"
+            product={product}
+            sourceHint={sourceHint}
+          />
         </div>
       </section>
     </div>
   );
 }
 
-function buildProductExperience(
-  product: Product,
-  products: Product[],
-  related: Product[],
-  complementary: Product[],
-): ProductExperience {
-  const primaryConcern = product.concerns[0] ?? "luminosidad";
-  const secondaryConcern = product.concerns[1] ?? "textura";
+function buildProductExperience(product: NonNullable<Awaited<ReturnType<typeof getProductBySlug>>>) {
   const idealFor = [...product.skinTypes, ...product.concerns].slice(0, 4);
   const notRecommendedIf =
     product.category === "Tratamientos" || product.category === "Serums"
@@ -398,20 +271,17 @@ function buildProductExperience(
 
   return {
     benefitCards: buildBenefitCards(product),
-    editorialComplements: [...complementary, ...related].slice(0, 3),
     idealFor,
     ingredientCards: product.ingredients.map((ingredient) => ({
       name: ingredient,
-      effect: ingredientGlossary[ingredient] ?? buildFallbackIngredientEffect(ingredient, primaryConcern),
+      effect: ingredientGlossary[ingredient] ?? `${ingredient} acompana la formula sin volver la rutina mas pesada de lo necesario.`,
     })),
     notRecommendedIf,
-    resultTimeline: buildResultTimeline(primaryConcern, secondaryConcern),
-    routineSteps: buildRoutineSteps(product, products),
-    usageTimeline: buildUsageTimeline(product, primaryConcern),
-  };
+    usageTimeline: buildUsageTimeline(product),
+  } satisfies ProductExperience;
 }
 
-function buildBenefitCards(product: Product) {
+function buildBenefitCards(product: NonNullable<Awaited<ReturnType<typeof getProductBySlug>>>) {
   const concern = product.concerns[0]?.toLowerCase() ?? "uniformidad";
 
   if (product.category === "Limpiadores") {
@@ -513,7 +383,9 @@ function buildBenefitCards(product: Product) {
   ];
 }
 
-function buildUsageTimeline(product: Product, primaryConcern: string) {
+function buildUsageTimeline(
+  product: NonNullable<Awaited<ReturnType<typeof getProductBySlug>>>,
+) {
   const usageText = product.usage.join(" ").toLowerCase();
   const frequency =
     usageText.includes("alternados")
@@ -558,119 +430,5 @@ function buildUsageTimeline(product: Product, primaryConcern: string) {
       title: "Constancia antes que intensidad",
       description: frequency,
     },
-    {
-      label: "Resultados",
-      title: "Expectativa realista",
-      description: `Suele sentirse primero en confort y textura. ${primaryConcern} se entiende mejor cuando la piel recibe tiempo y repeticion.`,
-    },
   ];
-}
-
-function buildRoutineSteps(product: Product, products: Product[]) {
-  const currentSlot =
-    product.category === "Limpiadores"
-      ? "limpiador"
-      : product.category === "Hidratantes"
-        ? "hidratante"
-        : product.category === "Protector Solar"
-          ? "protector"
-          : "tratamiento";
-
-  const pickByCategory = (categories: string[]) =>
-    products.find(
-      (entry) =>
-        entry.id !== product.id &&
-        categories.includes(entry.category),
-    ) ?? product;
-
-  const slots = [
-    {
-      key: "limpiador",
-      slot: "Limpieza",
-      product: currentSlot === "limpiador" ? product : pickByCategory(["Limpiadores"]),
-      note:
-        currentSlot === "limpiador"
-          ? "Aqui empieza todo: una limpieza que no rompa el equilibrio."
-          : "Empieza con limpieza suave para que el resto de la rutina entre mejor.",
-    },
-    {
-      key: "tratamiento",
-      slot: "Tratamiento",
-      product:
-        currentSlot === "tratamiento"
-          ? product
-          : pickByCategory(["Serums", "Tratamientos", "Esencias"]),
-      note:
-        currentSlot === "tratamiento"
-          ? "Este es el paso que lleva la transformacion principal."
-          : "Aqui entra el activo que empuja tono, textura o brotes con mas direccion.",
-    },
-    {
-      key: "hidratante",
-      slot: "Hidratacion",
-      product: currentSlot === "hidratante" ? product : pickByCategory(["Hidratantes"]),
-      note:
-        currentSlot === "hidratante"
-          ? "Este paso sella confort para que la rutina se sostenga mejor."
-          : "Despues, una capa que mantenga confort y flexibilidad.",
-    },
-    {
-      key: "protector",
-      slot: "Proteccion solar",
-      product: currentSlot === "protector" ? product : pickByCategory(["Protector Solar"]),
-      note:
-        currentSlot === "protector"
-          ? "Asi se protege el trabajo previo frente al sol diario."
-          : "Por la manana, termina con proteccion para cuidar lo que ya estas corrigiendo.",
-    },
-  ];
-
-  return slots.map((entry) => ({
-    isCurrent: entry.product.id === product.id,
-    label: entry.product.id === product.id ? "Este es tu paso clave" : "Ver producto",
-    note: entry.note,
-    product: entry.product,
-    slot: entry.slot,
-  }));
-}
-
-function buildResultTimeline(primaryConcern: string, secondaryConcern: string) {
-  return [
-    {
-      label: "Semana 1",
-      title: "Mas comodidad",
-      description: "Lo primero suele sentirse en confort, textura y ganas de repetir la rutina.",
-    },
-    {
-      label: "Semana 2",
-      title: "Ritmo estable",
-      description: `La piel empieza a responder mejor cuando ${secondaryConcern.toLowerCase()} deja de depender de impulsos.`,
-    },
-    {
-      label: "Semana 4",
-      title: "Cambio visible",
-      description: `Con constancia, ${primaryConcern.toLowerCase()} suele verse mas ordenado y menos dominante.`,
-    },
-    {
-      label: "Semana 8",
-      title: "Transformacion sostenida",
-      description: "No es magia rapida. Es una mejora mas clara, construida por repeticion y tolerancia.",
-    },
-  ];
-}
-
-function buildFallbackIngredientEffect(ingredient: string, primaryConcern: string) {
-  return `${ingredient} acompana una rutina enfocada en ${primaryConcern.toLowerCase()} sin volverla mas pesada de lo necesario.`;
-}
-
-function formatJoinedList(values: string[]) {
-  if (values.length === 0) {
-    return "lo que tu piel necesita hoy";
-  }
-
-  if (values.length === 1) {
-    return values[0].toLowerCase();
-  }
-
-  return `${values.slice(0, -1).join(", ").toLowerCase()} y ${values.at(-1)?.toLowerCase()}`;
 }

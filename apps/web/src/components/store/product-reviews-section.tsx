@@ -43,9 +43,11 @@ export function ProductReviewsSection({
   });
   const [notice, setNotice] = useState<Notice>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFormVisible, setIsFormVisible] = useState(false);
 
   const selectedRating = form.watch("rating");
   const hasReviews = initialSummary.reviewCount > 0;
+  const featuredReviews = initialSummary.reviews.slice(0, 3);
 
   async function handleSubmit(values: ProductReviewFormValues) {
     const payload: ProductReviewCreateInput = {
@@ -107,12 +109,12 @@ export function ProductReviewsSection({
     <section className="store-review-block overflow-hidden rounded-[2.4rem] bg-[#f0e5da] p-6 sm:p-8">
       <SectionHeading
         eyebrow="Opiniones de clientas"
-        title="Como se siente en una rutina real"
-        description={`Testimonios moderados sobre ${productName}, escritos para ayudar a decidir con mas calma.`}
+        title="Lo que dicen de este producto"
+        description={`Opiniones moderadas sobre ${productName}, pensadas para decidir con mas claridad.`}
       />
 
-      <div className="mt-8 space-y-8">
-        <div className="grid gap-6 lg:grid-cols-[0.74fr_1.26fr]">
+      <div className="mt-8 space-y-6">
+        <div className="grid gap-6 lg:grid-cols-[0.72fr_1.28fr]">
           <div className="rounded-[2rem] bg-white/85 p-6 sm:p-7">
             {hasReviews ? (
               <div className="space-y-4">
@@ -130,30 +132,58 @@ export function ProductReviewsSection({
                   </div>
                 </div>
                 <p className="max-w-md text-sm leading-7 text-stone-600">
-                  Las mejores resenas ayudan a imaginar como se siente el producto dentro de una rutina completa.
+                  Una lectura corta de como se siente en piel real.
                 </p>
-                <Link
-                  className="btn-secondary border-stone-300 bg-white/90"
-                  href={`/reviews?product=${encodeURIComponent(productRef)}`}
-                >
-                  Ver todas las resenas
-                </Link>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    className="btn-secondary border-stone-300 bg-white/90"
+                    href={`/reviews?product=${encodeURIComponent(productRef)}`}
+                  >
+                    Ver todas las resenas
+                  </Link>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => {
+                      setIsFormVisible((current) => !current);
+                    }}
+                    type="button"
+                  >
+                    {isFormVisible ? "Ocultar resena" : "Escribir resena"}
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                <p className="font-serif text-[2.7rem] leading-none text-stone-950">
-                  Aun sin opiniones aprobadas
+              <div className="space-y-4">
+                <p className="font-serif text-[2.4rem] leading-none text-stone-950">
+                  Aun no hay opiniones visibles
                 </p>
                 <p className="max-w-md text-sm leading-7 text-stone-600">
-                  Cuando una clienta comparte como lo vivio en su piel, esta seccion gana mucho mas valor.
+                  La primera resena ayuda a decidir mejor y da mas contexto a la compra.
                 </p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      setIsFormVisible(true);
+                    }}
+                    type="button"
+                  >
+                    Escribir resena
+                  </button>
+                  <Link
+                    className="btn-secondary border-stone-300 bg-white/90"
+                    href={`/reviews/escribir?product=${encodeURIComponent(productRef)}`}
+                  >
+                    Resena verificada
+                  </Link>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {hasReviews ? (
-              initialSummary.reviews.map((review) => (
+              featuredReviews.map((review) => (
                 <article className="rounded-[1.9rem] bg-white p-5 sm:p-6" key={review.id}>
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f3e7dd] font-serif text-lg text-stone-950">
@@ -175,16 +205,16 @@ export function ProductReviewsSection({
                   </div>
 
                   {review.title ? (
-                    <h3 className="mt-5 font-serif text-[1.9rem] leading-[0.98] text-stone-950">
+                    <h3 className="mt-5 font-serif text-[1.6rem] leading-[0.98] text-stone-950">
                       {review.title}
                     </h3>
                   ) : null}
 
-                  <p className="mt-4 text-sm leading-8 text-stone-600">{review.body}</p>
+                  <p className="mt-4 text-sm leading-7 text-stone-600">{review.body}</p>
                 </article>
               ))
             ) : (
-              <div className="rounded-[1.9rem] bg-white px-5 py-8 text-sm leading-7 text-stone-500 md:col-span-2">
+              <div className="rounded-[1.9rem] bg-white px-5 py-8 text-sm leading-7 text-stone-500 md:col-span-2 xl:col-span-3">
                 Aun no hay testimonios aprobados para mostrar en este producto.
               </div>
             )}
@@ -192,24 +222,34 @@ export function ProductReviewsSection({
         </div>
 
         <div className="rounded-[2rem] border border-stone-300/70 bg-white p-5 sm:p-6">
-          <div className="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
-            <div className="space-y-3">
-              <p className="section-label">Formulario al final</p>
-              <h3 className="font-serif text-[2.3rem] leading-[0.98] text-stone-950">
-                Comparte tu experiencia cuando ya tengas algo que contar
-              </h3>
-              <p className="max-w-lg text-sm leading-7 text-stone-600">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="section-label">Escribir resena</p>
+              <p className="mt-2 text-sm leading-7 text-stone-600">
                 Revisamos cada comentario antes de publicarlo. Tu email nunca se muestra en storefront.
               </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setIsFormVisible((current) => !current);
+                }}
+                type="button"
+              >
+                {isFormVisible ? "Ocultar formulario" : "Abrir formulario"}
+              </button>
               <Link
-                className="btn-ghost px-0 py-0 text-stone-950"
+                className="btn-ghost"
                 href={`/reviews/escribir?product=${encodeURIComponent(productRef)}`}
               >
-                Escribir resena verificada
+                Resena verificada
               </Link>
             </div>
+          </div>
 
-            <form className="space-y-5" onSubmit={form.handleSubmit(handleSubmit)}>
+          {isFormVisible ? (
+            <form className="mt-6 space-y-5 border-t border-stone-200 pt-6" onSubmit={form.handleSubmit(handleSubmit)}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   error={form.formState.errors.customerName?.message}
@@ -266,7 +306,7 @@ export function ProductReviewsSection({
               <label className="block">
                 <span className="text-sm font-semibold text-stone-900">Comentario</span>
                 <textarea
-                  className="mt-3 min-h-36 w-full rounded-[1.1rem] border border-stone-200 bg-[#fcfaf7] px-4 py-3 text-sm leading-7 text-stone-700 outline-none transition focus:border-stone-500"
+                  className="mt-3 min-h-32 w-full rounded-[1.1rem] border border-stone-200 bg-[#fcfaf7] px-4 py-3 text-sm leading-7 text-stone-700 outline-none transition focus:border-stone-500"
                   placeholder="Cuentanos como se sintio en tu rutina y que notaste en tu piel."
                   {...form.register("body")}
                 />
@@ -288,14 +328,14 @@ export function ProductReviewsSection({
               ) : null}
 
               <button
-                className="btn-primary w-full"
+                className="btn-primary w-full sm:w-auto"
                 disabled={isSubmitting}
                 type="submit"
               >
                 {isSubmitting ? "Enviando resena..." : "Enviar resena"}
               </button>
             </form>
-          </div>
+          ) : null}
         </div>
       </div>
     </section>
