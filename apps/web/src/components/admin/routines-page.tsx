@@ -525,7 +525,7 @@ export function RoutinesPage() {
           ) : (
             <div className="overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-stone-200 text-left">
+                <table className="min-w-[920px] divide-y divide-stone-200 text-left">
                   <thead className="bg-[#fff8f3] text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
                     <tr>
                       <th className="px-4 py-4">Rutina</th>
@@ -597,7 +597,7 @@ export function RoutinesPage() {
 
       {(drawerMode === "create" || activeRoutine) ? (
         <div className="fixed inset-0 z-50 bg-stone-950/20 backdrop-blur-sm">
-          <div className="ml-auto h-full w-full max-w-[960px] overflow-y-auto bg-[#fffaf6] px-5 py-6 shadow-2xl sm:px-6">
+          <div className="ml-auto h-full w-full max-w-full overflow-y-auto bg-[#fffaf6] px-4 py-5 shadow-2xl sm:max-w-[960px] sm:px-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">
@@ -704,7 +704,7 @@ export function RoutinesPage() {
 
               <div className="mt-4 space-y-3">
                 {draft.linkedProducts.map((linkedProduct, index) => (
-                  <div className="grid gap-3 rounded-[1.2rem] bg-[#fff8f3] p-4 lg:grid-cols-[minmax(0,1fr)_130px_auto]" key={linkedProduct.clientId}>
+                  <div className="grid gap-3 rounded-[1.2rem] bg-[#fff8f3] p-4 xl:grid-cols-[minmax(0,1fr)_130px_auto]" key={linkedProduct.clientId}>
                     <SelectField
                       label={`Producto ${index + 1}`}
                       onChange={(value) => {
@@ -776,7 +776,7 @@ export function RoutinesPage() {
                   .sort((left, right) => left.order - right.order)
                   .map((step) => (
                     <div className="rounded-[1.3rem] bg-[#fff8f3] p-4" key={step.clientId}>
-                      <div className="grid gap-3 lg:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)]">
+                      <div className="grid gap-3 xl:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)]">
                         <Field
                           label="Orden"
                           onChange={(value) => {
@@ -822,7 +822,7 @@ export function RoutinesPage() {
                         />
                       </div>
 
-                      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                      <div className="mt-3 grid gap-3 xl:grid-cols-2">
                         <Field
                           label="Titulo"
                           onChange={(value) => {

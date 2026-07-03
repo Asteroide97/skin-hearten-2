@@ -310,7 +310,7 @@ export function ReviewsPage() {
           ) : (
             <div className="overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-stone-200 text-left">
+                <table className="min-w-[980px] divide-y divide-stone-200 text-left">
                   <thead className="bg-[#fff8f3] text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
                     <tr>
                       <th className="px-4 py-4">Producto</th>
@@ -393,7 +393,7 @@ export function ReviewsPage() {
         >
           <div className="flex h-full justify-end">
             <aside
-              className="h-full w-full max-w-2xl overflow-y-auto border-l border-stone-200 bg-[#fffaf7] p-5 shadow-[0_30px_90px_rgba(28,20,16,0.18)] sm:p-6"
+              className="h-full w-full max-w-full overflow-y-auto border-l border-stone-200 bg-[#fffaf7] p-5 shadow-[0_30px_90px_rgba(28,20,16,0.18)] sm:max-w-2xl sm:p-6"
               onClick={(event) => {
                 event.stopPropagation();
               }}

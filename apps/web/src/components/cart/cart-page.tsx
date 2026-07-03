@@ -61,7 +61,7 @@ export function CartPage() {
                 <h3 className="mt-2 text-xl font-semibold text-stone-900">{item.name}</h3>
                 <p className="mt-2 text-sm text-stone-600">{formatCurrency(item.price)} por unidad</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                 <input
                   aria-label={`Cantidad para ${item.name}`}
                   className="w-20 rounded-full border border-stone-200 bg-white px-4 py-2 text-center text-sm text-stone-700"
@@ -90,19 +90,19 @@ export function CartPage() {
             Una vista tranquila antes de envio, pago y confirmacion.
           </p>
           <div className="mt-6 space-y-4 text-sm text-stone-700">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-3">
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-3">
               <span>Ajuste</span>
               <span>-{formatCurrency(discount)}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-3">
               <span>Envio</span>
               <span>{shipping === 0 ? "Protegido sin costo" : formatCurrency(shipping)}</span>
             </div>
-            <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-base font-semibold text-stone-900">
+            <div className="flex items-start justify-between gap-3 border-t border-stone-200 pt-4 text-base font-semibold text-stone-900">
               <span>Total</span>
               <span>{formatCurrency(total)}</span>
             </div>

@@ -54,8 +54,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="admin-workspace mx-auto w-full max-w-[1480px] px-4 py-4 sm:px-5 lg:px-6 xl:px-8">
-        <div className="grid items-start gap-4 xl:grid-cols-[240px_minmax(0,1fr)] xl:gap-8">
+      <div className="admin-workspace mx-auto w-full max-w-[1480px] px-3 py-3 sm:px-5 sm:py-4 lg:px-6 xl:px-8">
+        <div className="grid items-start gap-3 xl:grid-cols-[240px_minmax(0,1fr)] xl:gap-8">
           <aside className="hidden xl:block">
             <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[1.5rem] border border-stone-200 bg-[#fbf7f2] px-4 py-5">
               <div className="flex items-start justify-between gap-3 border-b border-stone-200 pb-5">
@@ -102,13 +102,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </aside>
 
           <div className="min-w-0 space-y-4">
-            <div className="sticky top-3 z-30 rounded-[1.2rem] border border-stone-200 bg-[#fbf7f2]/95 px-4 py-3 backdrop-blur xl:hidden">
+            <div className="sticky top-2 z-30 rounded-[1.2rem] border border-stone-200 bg-[#fbf7f2]/95 px-3 py-3 backdrop-blur sm:px-4 xl:hidden">
               <div className="flex items-center justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="section-label">Skin Hearten Admin</p>
-                  <p className="mt-1 font-serif text-2xl text-stone-950">SuperAdmin</p>
+                  <p className="mt-1 truncate font-serif text-[1.55rem] text-stone-950 sm:text-2xl">SuperAdmin</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                   <button
                     className="btn-secondary px-3 py-2 text-xs"
                     onClick={() => {
@@ -138,8 +138,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {isNavOpen ? (
-        <div className="fixed inset-0 z-50 bg-stone-950/35 backdrop-blur-[2px] xl:hidden">
-          <div className="absolute inset-y-0 left-0 w-full max-w-[320px] border-r border-stone-200 bg-[#fbf7f2] px-4 py-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex bg-stone-950/35 backdrop-blur-[2px] xl:hidden">
+          <div className="h-full w-full max-w-[85vw] border-r border-stone-200 bg-[#fbf7f2] px-4 py-4 shadow-2xl sm:max-w-[320px]">
             <div className="flex items-start justify-between gap-3 border-b border-stone-200 pb-4">
               <div>
                 <p className="section-label">Skin Hearten Admin</p>
@@ -178,7 +178,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
           <button
             aria-label="Cerrar menu"
-            className="absolute inset-0 left-[320px]"
+            className="flex-1"
             onClick={() => {
               setIsNavOpen(false);
             }}

@@ -97,7 +97,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const productSchemas = buildProductSchemas(product, reviewSummary);
 
   return (
-    <div className="product-page mx-auto max-w-[1180px] space-y-12 px-5 py-8 sm:px-6 lg:px-8 lg:space-y-14">
+    <div className="product-page mx-auto max-w-[1180px] space-y-10 px-5 py-8 sm:px-6 lg:px-8 lg:space-y-14">
       <JsonLd data={productSchemas} />
       <ProductViewTracker
         category={product.category}
@@ -109,7 +109,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
       <section className="grid gap-8 border-b border-stone-200 pb-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
           <EditorialFigure
-            className="min-h-[640px]"
+            className="min-h-[420px] sm:min-h-[520px] lg:min-h-[640px]"
             description={product.highlight}
             frame="portrait"
             label="Producto"
@@ -121,7 +121,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
         <div className="space-y-6 lg:pl-4">
           <div className="space-y-4">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">{product.brand}</p>
-            <h1 className="font-serif text-[3.1rem] leading-[0.92] text-stone-950 sm:text-[3.9rem]">
+            <h1 className="font-serif text-[2.6rem] leading-[0.92] text-stone-950 sm:text-[3.3rem] lg:text-[3.9rem]">
               {product.name}
             </h1>
             <p className="max-w-lg text-base leading-8 text-stone-600">{product.highlight}</p>

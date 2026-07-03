@@ -157,7 +157,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
           </Link>
         </div>
 
-        <form action="/reviews" className="mt-6 grid gap-3 md:grid-cols-[1.2fr_0.8fr_0.6fr_auto]">
+        <form action="/reviews" className="mt-6 grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.6fr_auto]">
           <label className="space-y-2">
             <span className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Producto</span>
             <select
@@ -204,7 +204,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
           </label>
 
           <button
-            className="inline-flex items-center justify-center self-end rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-900 transition hover:border-stone-500"
+            className="inline-flex w-full items-center justify-center self-end rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-900 transition hover:border-stone-500 lg:w-auto"
             type="submit"
           >
             Aplicar

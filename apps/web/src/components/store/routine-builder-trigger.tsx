@@ -200,9 +200,9 @@ export function RoutineBuilderTrigger({
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-[70] bg-stone-950/35 backdrop-blur-sm">
-          <div className="mx-auto flex min-h-screen max-w-[1200px] items-center px-4 py-6 sm:px-6">
-            <div className="w-full rounded-[2.6rem] border border-stone-200 bg-[#fffaf6] px-5 py-6 shadow-[0_32px_80px_rgba(28,25,23,0.18)] sm:px-8 sm:py-8">
+        <div className="fixed inset-0 z-[70] overflow-y-auto bg-stone-950/35 backdrop-blur-sm">
+          <div className="mx-auto flex min-h-full max-w-[1200px] items-start px-4 py-4 sm:px-6 sm:py-6 lg:items-center">
+            <div className="my-auto w-full rounded-[2rem] border border-stone-200 bg-[#fffaf6] px-4 py-5 shadow-[0_32px_80px_rgba(28,25,23,0.18)] sm:rounded-[2.6rem] sm:px-8 sm:py-8">
               <div className="flex flex-col gap-5 border-b border-stone-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-3xl">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">Routine Builder</p>
@@ -239,7 +239,7 @@ export function RoutineBuilderTrigger({
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, index) => (
                       <div
                         className="rounded-[2rem] border border-stone-200 bg-white px-4 py-5"
@@ -285,7 +285,7 @@ export function RoutineBuilderTrigger({
                         </div>
                       </div>
 
-                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         {orderedSteps.map((step) => {
                           const isCurrent = step.productSlug === product.slug;
                           const assetUrl = resolveAssetUrl(step.image ?? step.productImage);
@@ -356,7 +356,7 @@ export function RoutineBuilderTrigger({
                       <p className="mt-1">{formatCurrency(product.price)}</p>
                     </div>
 
-                    <div className="flex flex-col gap-3 sm:flex-row">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                       {resolvedRoutine?.routine ? (
                         <button
                           className="btn-primary"

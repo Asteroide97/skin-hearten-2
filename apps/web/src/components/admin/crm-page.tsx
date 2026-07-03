@@ -848,7 +848,7 @@ export function CrmPage() {
         <section className="admin-panel p-3 sm:p-4">
           <div className="admin-table-shell">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-stone-200 text-left">
+              <table className="min-w-[1180px] divide-y divide-stone-200 text-left">
                 <thead className="bg-[#faf5ef] text-[11px] font-semibold tracking-[0.1em] text-stone-500">
                   <tr>
                     <th className="px-4 py-3">Contacto</th>
@@ -966,7 +966,7 @@ export function CrmPage() {
               }}
               type="button"
             />
-            <aside className="flex h-full w-full max-w-[1120px] flex-col overflow-y-auto border-l border-stone-200 bg-[#fcfaf8] px-4 py-4 shadow-2xl sm:px-5">
+            <aside className="flex h-full w-full max-w-full flex-col overflow-y-auto border-l border-stone-200 bg-[#fcfaf8] px-4 py-4 shadow-2xl sm:max-w-[1120px] sm:px-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Detalle CRM</p>
@@ -994,7 +994,7 @@ export function CrmPage() {
 
               {drawerNotice ? <NoticeBanner className="mt-5" notice={drawerNotice} /> : null}
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-nowrap gap-2 overflow-x-auto pb-1">
                 <DrawerTabButton
                   active={activeTab === "summary"}
                   count={null}
@@ -1291,7 +1291,7 @@ export function CrmPage() {
                         )}
                       </div>
 
-                      <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_220px_auto]">
+                      <div className="mt-5 grid gap-3 xl:grid-cols-[1fr_220px_220px_auto]">
                         <input
                           className="rounded-[1.2rem] border border-stone-200 bg-[#fffaf7] px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-stone-500"
                           onChange={(event) => {
@@ -1394,7 +1394,7 @@ export function CrmPage() {
                       </div>
 
                       <div className="mt-5 grid gap-3">
-                        <div className="grid gap-3 lg:grid-cols-[220px_220px_1fr]">
+                        <div className="grid gap-3 xl:grid-cols-[220px_220px_1fr]">
                           <select
                             className="rounded-[1.2rem] border border-stone-200 bg-[#fffaf7] px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-stone-500"
                             onChange={(event) => {

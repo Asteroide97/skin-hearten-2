@@ -21,11 +21,14 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  width: 100%;
+  overflow-x: clip;
   font-family: var(--font-manrope), sans-serif;
   background:
     radial-gradient(circle at top left, rgba(246, 226, 219, 0.84), transparent 28%),
@@ -58,6 +61,7 @@ textarea {
 .app-shell {
   position: relative;
   isolation: isolate;
+  min-width: 0;
 }
 
 .soft-panel {
@@ -112,6 +116,7 @@ textarea {
 
   .admin-table-shell {
     @apply overflow-hidden rounded-[1.2rem] border border-stone-200 bg-white;
+    -webkit-overflow-scrolling: touch;
   }
 
   .admin-drawer {
@@ -127,6 +132,7 @@ textarea {
 .product-page,
 .admin-workspace {
   color: var(--color-ink);
+  min-width: 0;
 }
 
 .admin-workspace .soft-panel {

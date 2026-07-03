@@ -465,7 +465,7 @@ export function IntelligencePage() {
 
               <div className="mt-4 overflow-hidden rounded-[1.3rem] border border-stone-200 bg-white">
                 <div className="max-h-[420px] overflow-auto">
-                  <table className="min-w-full divide-y divide-stone-200 text-left">
+                  <table className="min-w-[920px] divide-y divide-stone-200 text-left">
                     <thead className="bg-[#fff8f3] text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
                       <tr>
                         <th className="px-4 py-3">Cliente</th>
@@ -529,7 +529,7 @@ export function IntelligencePage() {
 
               <div className="mt-4 overflow-hidden rounded-[1.3rem] border border-stone-200 bg-white">
                 <div className="max-h-[420px] overflow-auto">
-                  <table className="min-w-full divide-y divide-stone-200 text-left">
+                  <table className="min-w-[920px] divide-y divide-stone-200 text-left">
                     <thead className="bg-[#fff8f3] text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
                       <tr>
                         <th className="px-4 py-3">Producto</th>

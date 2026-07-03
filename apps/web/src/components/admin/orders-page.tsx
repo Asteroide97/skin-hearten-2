@@ -462,7 +462,7 @@ export function OrdersPage() {
           ) : (
             <div className="admin-table-shell mt-5">
               <div className="max-h-[62vh] overflow-auto">
-                <table className="min-w-full divide-y divide-stone-200">
+                <table className="min-w-[980px] divide-y divide-stone-200">
                   <thead className="bg-[#faf5ef]">
                     <tr className="text-left text-xs font-semibold tracking-[0.1em] text-stone-500">
                       <th className="px-4 py-3">Orden</th>
@@ -542,7 +542,7 @@ export function OrdersPage() {
               }}
               type="button"
             />
-            <aside className="flex h-full w-full max-w-[980px] flex-col overflow-y-auto border-l border-stone-200 bg-[#fcfaf8] px-4 py-4 shadow-2xl sm:px-5">
+            <aside className="flex h-full w-full max-w-full flex-col overflow-y-auto border-l border-stone-200 bg-[#fcfaf8] px-4 py-4 shadow-2xl sm:max-w-[980px] sm:px-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Detalle pedido</p>
@@ -706,7 +706,7 @@ export function OrdersPage() {
                           value={draftInternalNotes}
                         />
                       </label>
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-stone-500">{draftInternalNotes.length}/2000 caracteres</p>
                         <button
                           className="rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"

@@ -356,7 +356,7 @@ export function CustomersPage() {
         <section className="admin-panel p-3 sm:p-4">
           <div className="admin-table-shell">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-stone-200 text-left">
+              <table className="min-w-[1120px] divide-y divide-stone-200 text-left">
                 <thead className="bg-[#faf5ef] text-[11px] font-semibold tracking-[0.1em] text-stone-500">
                   <tr>
                     <th className="px-4 py-3">Cliente</th>
@@ -459,7 +459,7 @@ export function CustomersPage() {
               }}
               type="button"
             />
-            <aside className="flex h-full w-full max-w-[980px] flex-col overflow-y-auto border-l border-stone-200 bg-[#fcfaf8] px-4 py-4 shadow-2xl sm:px-5">
+            <aside className="flex h-full w-full max-w-full flex-col overflow-y-auto border-l border-stone-200 bg-[#fcfaf8] px-4 py-4 shadow-2xl sm:max-w-[980px] sm:px-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Detalle cliente</p>
@@ -706,7 +706,7 @@ function PaginationFooter({
   return (
     <div className="mt-4 flex flex-col gap-3 border-t border-stone-200 pt-4 text-sm text-stone-600 sm:flex-row sm:items-center sm:justify-between">
       <p>{total} clientas encontradas</p>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
         <button
           className="rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={disabled || currentPage <= 1}

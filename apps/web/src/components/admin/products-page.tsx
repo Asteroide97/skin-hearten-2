@@ -510,7 +510,7 @@ export function ProductsPage() {
           ) : (
             <div className="admin-table-shell">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-stone-200 text-left">
+                <table className="min-w-[860px] divide-y divide-stone-200 text-left">
                   <thead className="bg-[#faf5ef] text-xs font-semibold tracking-[0.1em] text-stone-500">
                     <tr>
                       <th className="px-4 py-3">Producto</th>
@@ -569,7 +569,7 @@ export function ProductsPage() {
               }}
               type="button"
             />
-            <aside className="flex h-full w-full max-w-[1180px] flex-col overflow-y-auto border-l border-stone-200 bg-[#fcfaf8] px-4 py-4 shadow-2xl sm:px-5">
+            <aside className="flex h-full w-full max-w-full flex-col overflow-y-auto border-l border-stone-200 bg-[#fcfaf8] px-4 py-4 shadow-2xl sm:max-w-[1180px] sm:px-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Producto</p>

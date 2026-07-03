@@ -38,14 +38,14 @@ export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
       <SkinQuizModal catalogProducts={catalogProducts} />
       <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-white/92 backdrop-blur">
         <div className="border-b border-stone-200/70 bg-[#f6efe7]">
-          <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-3 px-5 py-2 text-[11px] tracking-[0.08em] text-stone-600 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-3 px-4 py-2 text-[11px] tracking-[0.08em] text-stone-600 sm:px-6 lg:px-8">
             <p>Skin Hearten. Journal of skincare.</p>
             <p className="hidden sm:block">Asesoria por WhatsApp y envios a todo Mexico</p>
           </div>
         </div>
-        <div className="mx-auto max-w-[1320px] px-5 py-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-4 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-8">
-            <Link className="shrink-0 font-serif text-[1.8rem] leading-none tracking-[-0.05em] text-stone-950 sm:text-[2rem]" href="/">
+        <div className="mx-auto max-w-[1320px] px-4 py-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-8">
+            <Link className="min-w-0 truncate font-serif text-[1.55rem] leading-none tracking-[-0.05em] text-stone-950 sm:text-[1.8rem] lg:text-[2rem]" href="/">
               Skin Hearten
             </Link>
             <SiteSearch
@@ -53,9 +53,9 @@ export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
               className="hidden flex-1 lg:block"
               showPromptSuggestions={isHomePage}
             />
-            <div className="flex shrink-0 items-center justify-end gap-2">
+            <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
               <Link
-                className="btn-secondary gap-2 px-3.5 py-2.5 text-sm"
+                className="btn-secondary gap-2 px-3 py-2.5 text-sm"
                 href="https://wa.me/525500000000?text=Hola%20Skin%20Hearten%2C%20necesito%20asesoria%20para%20mi%20rutina."
                 target="_blank"
               >
@@ -69,11 +69,11 @@ export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
                 Cuenta
               </Link>
               <Link
-                className="btn-primary gap-2 px-4 py-2.5"
+                className="btn-primary gap-2 px-3 py-2.5 sm:px-4"
                 href="/carrito"
               >
                 <CartIcon className="h-4 w-4" />
-                <span>Tu rutina</span>
+                <span className="hidden min-[430px]:inline">Tu rutina</span>
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs">{itemCount}</span>
               </Link>
             </div>
