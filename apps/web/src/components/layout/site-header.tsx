@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { SkinQuizModal } from "@/components/quiz/skin-quiz-modal";
 import { SkinQuizTrigger } from "@/components/quiz/skin-quiz-trigger";
 import { CartIcon, WhatsAppIcon } from "@/components/shared/icons";
 import { SiteSearch } from "@/components/layout/site-search";
+import { useStoredSkinQuizResult } from "@/hooks/use-stored-skin-quiz-result";
 import type { Product } from "@/lib/types";
 import { useCartStore } from "@/store/cart-store";
 
@@ -24,9 +26,12 @@ type SiteHeaderProps = {
 };
 
 export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
+  const pathname = usePathname();
+  const quizResult = useStoredSkinQuizResult();
   const itemCount = useCartStore((state) =>
     state.items.reduce((sum, item) => sum + item.quantity, 0),
   );
+  const isHomePage = pathname === "/";
 
   return (
     <>
@@ -43,7 +48,11 @@ export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
             <Link className="shrink-0 font-serif text-[1.8rem] leading-none tracking-[-0.05em] text-stone-950 sm:text-[2rem]" href="/">
               Skin Hearten
             </Link>
-            <SiteSearch className="hidden flex-1 lg:block" />
+            <SiteSearch
+              catalogProducts={catalogProducts}
+              className="hidden flex-1 lg:block"
+              showPromptSuggestions={isHomePage}
+            />
             <div className="flex shrink-0 items-center justify-end gap-2">
               <Link
                 className="btn-secondary gap-2 px-3.5 py-2.5 text-sm"
@@ -64,18 +73,22 @@ export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
                 href="/carrito"
               >
                 <CartIcon className="h-4 w-4" />
-                <span>Carrito</span>
+                <span>Tu rutina</span>
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs">{itemCount}</span>
               </Link>
             </div>
           </div>
-          <SiteSearch className="mt-4 lg:hidden" />
+          <SiteSearch
+            catalogProducts={catalogProducts}
+            className="mt-4 lg:hidden"
+            showPromptSuggestions={isHomePage}
+          />
           <nav className="mt-4 flex gap-1.5 overflow-x-auto border-t border-stone-200 pt-4 text-sm text-stone-700">
             <SkinQuizTrigger
               className="btn-secondary whitespace-nowrap px-4 py-2.5"
               source="header"
             >
-              Encontrar mi rutina
+              {quizResult ? "Ver rutina" : "Diagnostico en 2 minutos"}
             </SkinQuizTrigger>
             {navItems.map((item) => (
               <Link
