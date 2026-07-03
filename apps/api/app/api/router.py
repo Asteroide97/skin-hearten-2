@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    admin_routines,
     admin_intelligence,
     admin_customers,
     admin_reviews,
@@ -27,6 +28,7 @@ from app.api.routes import (
     product_reviews,
     products,
     reviews,
+    routines,
     skin_quiz,
 )
 
@@ -35,6 +37,7 @@ api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(product_reviews.router, tags=["product-reviews"])
 api_router.include_router(reviews.router, tags=["reviews"])
 api_router.include_router(products.router, tags=["products"])
+api_router.include_router(routines.router, tags=["routines"])
 api_router.include_router(categories.router, tags=["categories"])
 api_router.include_router(brands.router, tags=["brands"])
 api_router.include_router(cart.router, tags=["cart"])
@@ -47,6 +50,7 @@ api_router.include_router(orders.router, tags=["orders"])
 api_router.include_router(blog.router, tags=["blog"])
 api_router.include_router(skin_quiz.router, tags=["skin-quiz"])
 api_router.include_router(admin_products.router, tags=["admin-products"])
+api_router.include_router(admin_routines.router, tags=["admin-routines"])
 api_router.include_router(admin_categories.router, tags=["admin-categories"])
 api_router.include_router(admin_brands.router, tags=["admin-brands"])
 api_router.include_router(admin_coupons.router, tags=["admin-coupons"])

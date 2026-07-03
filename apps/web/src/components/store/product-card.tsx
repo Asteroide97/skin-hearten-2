@@ -6,19 +6,21 @@ import { formatCurrency } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
 type ProductCardProps = {
+  detailHref?: string;
   product: Product;
 };
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ detailHref, product }: ProductCardProps) {
   const compareAtPrice = product.compareAtPrice ?? product.price;
   const hasOffer = compareAtPrice > product.price;
   const savings = hasOffer
     ? Math.round(((compareAtPrice - product.price) / compareAtPrice) * 100)
     : 0;
+  const productHref = detailHref ?? `/producto/${product.slug}`;
 
   return (
     <article className="group flex h-full flex-col">
-      <Link className="block" href={`/producto/${product.slug}`}>
+      <Link className="block" href={productHref}>
         <div
           className={`relative overflow-hidden rounded-[2.35rem] border border-stone-200/80 bg-gradient-to-br ${product.gradient} px-6 py-6 transition duration-300 group-hover:-translate-y-1 group-hover:border-stone-300`}
         >
@@ -75,7 +77,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex flex-col gap-3 sm:flex-row">
             <AddToCartButton
               className="btn-primary w-full px-4 py-3"
-              label="Agregar a rutina"
+              label="Anadir a mi rutina"
               name={product.name}
               price={product.price}
               productId={product.id}
@@ -83,7 +85,7 @@ export function ProductCard({ product }: ProductCardProps) {
             />
             <Link
               className="btn-secondary w-full px-4 py-3"
-              href={`/producto/${product.slug}`}
+              href={productHref}
             >
               Ver detalle
             </Link>

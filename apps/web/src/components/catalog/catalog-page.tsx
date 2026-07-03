@@ -184,8 +184,8 @@ export function CatalogPage({
       <div className="space-y-6">
         <div className="soft-panel flex flex-col gap-4 rounded-[1.8rem] p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">Catalogo</p>
-            <h2 className="mt-2 font-serif text-3xl text-stone-900">Skincare con criterio y foco de compra</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">Seleccion</p>
+            <h2 className="mt-2 font-serif text-3xl text-stone-900">Skincare ordenado por necesidad real</h2>
             <p className="mt-3 text-sm text-stone-600">
               {filteredProducts.length} productos visibles
               {deferredSearch ? ` para "${deferredSearch}"` : ""}
@@ -221,7 +221,11 @@ export function CatalogPage({
         {filteredProducts.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                detailHref={`/producto/${product.slug}?source=category&category=${encodeURIComponent(product.category)}`}
+                key={product.id}
+                product={product}
+              />
             ))}
           </div>
         ) : (
@@ -231,7 +235,7 @@ export function CatalogPage({
             </p>
             <h3 className="mt-3 font-serif text-3xl text-stone-900">No encontramos productos con esos filtros</h3>
             <p className="mt-3 text-sm leading-7 text-stone-600">
-              Ajusta categoria, problema o busqueda para ver una seleccion mas amplia del catalogo.
+              Ajusta categoria, problema o busqueda para ver una seleccion mas cercana a lo que tu piel necesita.
             </p>
           </div>
         )}

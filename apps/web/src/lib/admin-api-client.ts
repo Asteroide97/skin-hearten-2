@@ -29,7 +29,7 @@ export type AdminApiResult<TData> = AdminApiSuccess<TData> | AdminApiFailure;
 export type QueryValue = string | number | boolean | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
-type RequestMethod = "DELETE" | "GET" | "PATCH" | "POST";
+type RequestMethod = "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
 
 async function getAdminAccessToken() {
   const cookieStore = await cookies();

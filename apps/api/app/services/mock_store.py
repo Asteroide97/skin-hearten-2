@@ -314,6 +314,175 @@ PRODUCTS = [
     },
 ]
 
+ROUTINES = [
+    {
+        "id": 1,
+        "name": "Rutina Firmeza Esencial",
+        "slug": "rutina-firmeza-esencial",
+        "description": "Una secuencia corta para firmeza, textura y luminosidad diaria.",
+        "is_active": True,
+        "image_url": None,
+        "color": "#EFDCCF",
+        "goal_key": "lineas_expresion",
+        "category_key": "serums",
+        "steps": [
+            {
+                "id": 1,
+                "sort_order": 1,
+                "product_id": 2,
+                "title": "Preparar la piel",
+                "short_description": "Limpieza suave para que el tratamiento se sienta mas amable.",
+                "image_url": None,
+                "badge": "Paso 1",
+            },
+            {
+                "id": 2,
+                "sort_order": 2,
+                "product_id": 1,
+                "title": "Tratamiento clave",
+                "short_description": "Peptidos y antioxidantes para una piel mas lisa y luminosa.",
+                "image_url": None,
+                "badge": "Producto actual",
+            },
+            {
+                "id": 3,
+                "sort_order": 3,
+                "product_id": 3,
+                "title": "Sellar confort",
+                "short_description": "Ceramidas para sostener elasticidad y confort visible.",
+                "image_url": None,
+                "badge": "Paso 3",
+            },
+            {
+                "id": 4,
+                "sort_order": 4,
+                "product_id": 4,
+                "title": "Proteger el avance",
+                "short_description": "Proteccion diaria para cuidar tono, firmeza y textura.",
+                "image_url": None,
+                "badge": "AM",
+            },
+        ],
+        "linked_products": [
+            {"id": 1, "product_id": 1, "is_primary": True, "priority": 0},
+            {"id": 2, "product_id": 2, "is_primary": False, "priority": 1},
+            {"id": 3, "product_id": 3, "is_primary": False, "priority": 2},
+            {"id": 4, "product_id": 4, "is_primary": False, "priority": 3},
+        ],
+    },
+    {
+        "id": 2,
+        "name": "Rutina Tono Uniforme",
+        "slug": "rutina-tono-uniforme",
+        "description": "Pensada para manchas, tono desigual y proteccion constante.",
+        "is_active": True,
+        "image_url": None,
+        "color": "#F4E7D7",
+        "goal_key": "manchas",
+        "category_key": "tratamientos",
+        "steps": [
+            {
+                "id": 5,
+                "sort_order": 1,
+                "product_id": 2,
+                "title": "Base limpia",
+                "short_description": "Prepara la piel sin resecar ni irritar de mas.",
+                "image_url": None,
+                "badge": "Paso 1",
+            },
+            {
+                "id": 6,
+                "sort_order": 2,
+                "product_id": 5,
+                "title": "Correccion nocturna",
+                "short_description": "Activos renovadores para refinar textura y tono.",
+                "image_url": None,
+                "badge": "Paso 2",
+            },
+            {
+                "id": 7,
+                "sort_order": 3,
+                "product_id": 3,
+                "title": "Soporte de barrera",
+                "short_description": "Ayuda a tolerar mejor el uso continuo del tratamiento.",
+                "image_url": None,
+                "badge": "Paso 3",
+            },
+            {
+                "id": 8,
+                "sort_order": 4,
+                "product_id": 4,
+                "title": "Proteccion diaria",
+                "short_description": "El paso que sostiene el trabajo sobre manchas.",
+                "image_url": None,
+                "badge": "Imprescindible",
+            },
+        ],
+        "linked_products": [
+            {"id": 5, "product_id": 5, "is_primary": True, "priority": 0},
+            {"id": 6, "product_id": 4, "is_primary": False, "priority": 1},
+            {"id": 7, "product_id": 2, "is_primary": False, "priority": 2},
+            {"id": 8, "product_id": 3, "is_primary": False, "priority": 3},
+            {"id": 9, "product_id": 1, "is_primary": False, "priority": 4},
+        ],
+    },
+    {
+        "id": 3,
+        "name": "Rutina Balance Acne Adulto",
+        "slug": "rutina-balance-acne-adulto",
+        "description": "Una rutina ligera para brotes, poros y marcas recientes.",
+        "is_active": True,
+        "image_url": None,
+        "color": "#EEE7DE",
+        "goal_key": "acne",
+        "category_key": "tratamientos",
+        "steps": [
+            {
+                "id": 9,
+                "sort_order": 1,
+                "product_id": 2,
+                "title": "Limpieza amable",
+                "short_description": "Retira residuos sin dejar la piel tirante.",
+                "image_url": None,
+                "badge": "Paso 1",
+            },
+            {
+                "id": 10,
+                "sort_order": 2,
+                "product_id": 7,
+                "title": "Tratamiento ligero",
+                "short_description": "BHA y niacinamida para textura, brillo y poros visibles.",
+                "image_url": None,
+                "badge": "Producto actual",
+            },
+            {
+                "id": 11,
+                "sort_order": 3,
+                "product_id": 6,
+                "title": "Hidratacion sin peso",
+                "short_description": "Mantiene confort sin sentir la rutina densa.",
+                "image_url": None,
+                "badge": "Paso 3",
+            },
+            {
+                "id": 12,
+                "sort_order": 4,
+                "product_id": 4,
+                "title": "Proteccion diaria",
+                "short_description": "Ayuda a cuidar la piel y a evitar marcas mas visibles.",
+                "image_url": None,
+                "badge": "AM",
+            },
+        ],
+        "linked_products": [
+            {"id": 10, "product_id": 7, "is_primary": True, "priority": 0},
+            {"id": 11, "product_id": 2, "is_primary": False, "priority": 1},
+            {"id": 12, "product_id": 6, "is_primary": False, "priority": 2},
+            {"id": 13, "product_id": 4, "is_primary": False, "priority": 3},
+        ],
+    },
+]
+
 BLOG_POSTS = [
     {
         "id": 1,
@@ -737,6 +906,248 @@ def list_categories() -> list[dict]:
 
 def list_brands() -> list[dict]:
     return deepcopy(BRANDS)
+
+
+def _slugify_mock(value: str) -> str:
+    return "-".join(part for part in value.strip().lower().split() if part)
+
+
+def _next_routine_id() -> int:
+    return max(routine["id"] for routine in ROUTINES) + 1 if ROUTINES else 1
+
+
+def _next_routine_step_id() -> int:
+    step_ids = [step["id"] for routine in ROUTINES for step in routine.get("steps", [])]
+    return (max(step_ids) + 1) if step_ids else 1
+
+
+def _next_routine_link_id() -> int:
+    link_ids = [link["id"] for routine in ROUTINES for link in routine.get("linked_products", [])]
+    return (max(link_ids) + 1) if link_ids else 1
+
+
+def list_routines() -> list[dict]:
+    return sorted([deepcopy(routine) for routine in ROUTINES], key=lambda routine: routine["name"].lower())
+
+
+def get_routine(routine_id: int) -> dict | None:
+    return next((deepcopy(routine) for routine in ROUTINES if routine["id"] == routine_id), None)
+
+
+def _build_unique_routine_slug(name: str, *, exclude_id: int | None = None) -> str:
+    base_slug = _slugify_mock(name) or "rutina"
+    candidate = base_slug
+    suffix = 2
+
+    while any(
+        routine["slug"] == candidate and routine["id"] != exclude_id
+        for routine in ROUTINES
+    ):
+        candidate = f"{base_slug}-{suffix}"
+        suffix += 1
+
+    return candidate
+
+
+def _normalize_routine_payload(payload: dict, *, routine_id: int | None = None) -> dict:
+    next_step_id = _next_routine_step_id()
+    next_link_id = _next_routine_link_id()
+    normalized_steps: list[dict] = []
+
+    for index, step in enumerate(sorted(payload.get("steps", []), key=lambda entry: int(entry.get("sort_order") or 0))):
+        step_id = int(step.get("id") or next_step_id)
+        if step.get("id") is None:
+            next_step_id += 1
+        normalized_steps.append(
+            {
+                "id": step_id,
+                "sort_order": int(step.get("sort_order") or index + 1),
+                "product_id": int(step["product_id"]),
+                "title": str(step.get("title") or "").strip(),
+                "short_description": str(step.get("short_description") or "").strip(),
+                "image_url": str(step.get("image_url") or "").strip() or None,
+                "badge": str(step.get("badge") or "").strip() or None,
+            }
+        )
+
+    normalized_links: list[dict] = []
+    for index, link in enumerate(payload.get("linked_products", [])):
+        link_id = int(link.get("id") or next_link_id)
+        if link.get("id") is None:
+            next_link_id += 1
+        normalized_links.append(
+            {
+                "id": link_id,
+                "product_id": int(link["product_id"]),
+                "is_primary": bool(link.get("is_primary", False)),
+                "priority": int(link.get("priority") or index),
+            }
+        )
+
+    if normalized_links and not any(link["is_primary"] for link in normalized_links):
+        normalized_links[0]["is_primary"] = True
+
+    return {
+        "id": routine_id if routine_id is not None else _next_routine_id(),
+        "name": str(payload.get("name") or "").strip(),
+        "slug": _build_unique_routine_slug(str(payload.get("name") or ""), exclude_id=routine_id),
+        "description": str(payload.get("description") or "").strip() or None,
+        "is_active": bool(payload.get("is_active", True)),
+        "image_url": str(payload.get("image_url") or "").strip() or None,
+        "color": str(payload.get("color") or "").strip() or None,
+        "goal_key": str(payload.get("goal_key") or "").strip() or None,
+        "category_key": str(payload.get("category_key") or "").strip() or None,
+        "steps": normalized_steps,
+        "linked_products": normalized_links,
+    }
+
+
+def create_routine(payload: dict) -> dict:
+    routine = _normalize_routine_payload(payload)
+    ROUTINES.append(routine)
+    return deepcopy(routine)
+
+
+def update_routine(routine_id: int, payload: dict) -> dict | None:
+    routine = next((entry for entry in ROUTINES if entry["id"] == routine_id), None)
+    if not routine:
+        return None
+
+    normalized = _normalize_routine_payload(payload, routine_id=routine_id)
+    routine.clear()
+    routine.update(normalized)
+    return deepcopy(routine)
+
+
+def delete_routine(routine_id: int) -> bool:
+    index = next((idx for idx, routine in enumerate(ROUTINES) if routine["id"] == routine_id), None)
+    if index is None:
+        return False
+
+    ROUTINES.pop(index)
+    return True
+
+
+def duplicate_routine(routine_id: int) -> dict | None:
+    routine = get_routine(routine_id)
+    if not routine:
+        return None
+
+    duplicate_payload = {
+        **routine,
+        "name": f'{routine["name"]} Copy',
+        "steps": [
+            {
+                "sort_order": step["sort_order"],
+                "product_id": step["product_id"],
+                "title": step["title"],
+                "short_description": step["short_description"],
+                "image_url": step.get("image_url"),
+                "badge": step.get("badge"),
+            }
+            for step in routine.get("steps", [])
+        ],
+        "linked_products": [
+            {
+                "product_id": link["product_id"],
+                "is_primary": link["is_primary"],
+                "priority": link.get("priority", 0),
+            }
+            for link in routine.get("linked_products", [])
+        ],
+    }
+    return create_routine(duplicate_payload)
+
+
+def _resolve_product_id_from_ref(product_ref: str) -> int | None:
+    if product_ref.isdigit():
+        product = get_product(int(product_ref))
+    else:
+        product = get_product_by_slug(product_ref)
+    if not product:
+        return None
+    return int(product["id"])
+
+
+def _goal_matches(goal_key: str | None, goal: str | None) -> bool:
+    if not goal_key or not goal:
+        return False
+    return goal_key.strip().lower() == goal.strip().lower()
+
+
+def _category_matches(category_key: str | None, category: str | None) -> bool:
+    if not category_key or not category:
+        return False
+    return _slugify_mock(category_key) == _slugify_mock(category)
+
+
+def _find_routine_link(routine: dict, product_id: int) -> dict | None:
+    return next(
+        (
+            link
+            for link in routine.get("linked_products", [])
+            if int(link.get("product_id") or 0) == product_id
+        ),
+        None,
+    )
+
+
+def resolve_routine(
+    *,
+    product_ref: str,
+    goal: str | None = None,
+    category: str | None = None,
+    source: str = "product",
+) -> dict | None:
+    product_id = _resolve_product_id_from_ref(product_ref)
+    if product_id is None:
+        return None
+
+    candidates = [
+        deepcopy(routine)
+        for routine in ROUTINES
+        if routine.get("is_active", True)
+        and (
+            any(int(link.get("product_id") or 0) == product_id for link in routine.get("linked_products", []))
+            or any(int(step.get("product_id") or 0) == product_id for step in routine.get("steps", []))
+        )
+    ]
+    if not candidates:
+        return None
+
+    def candidate_sort_key(routine: dict) -> tuple[int, int, int, int]:
+        link = _find_routine_link(routine, product_id)
+        is_primary = int(bool(link.get("is_primary", False))) if link else 0
+        priority = int(link.get("priority") or 0) if link else 999
+        goal_match = int(_goal_matches(routine.get("goal_key"), goal))
+        category_match = int(_category_matches(routine.get("category_key"), category))
+
+        if source == "skin_quiz":
+            return (goal_match, is_primary, category_match, -priority)
+        if source == "category":
+            return (category_match, is_primary, goal_match, -priority)
+        return (is_primary, goal_match, category_match, -priority)
+
+    selected = sorted(candidates, key=candidate_sort_key, reverse=True)[0]
+    selected_link = _find_routine_link(selected, product_id)
+
+    if source == "skin_quiz" and _goal_matches(selected.get("goal_key"), goal):
+        matched_by = "goal"
+    elif source == "category" and _category_matches(selected.get("category_key"), category):
+        matched_by = "category"
+    elif selected_link and bool(selected_link.get("is_primary", False)):
+        matched_by = "primary_product"
+    elif _goal_matches(selected.get("goal_key"), goal):
+        matched_by = "goal"
+    elif _category_matches(selected.get("category_key"), category):
+        matched_by = "category"
+    else:
+        matched_by = "linked_product"
+
+    return {
+        "routine": deepcopy(selected),
+        "matched_by": matched_by,
+    }
 
 
 def get_blog_posts() -> list[dict]:

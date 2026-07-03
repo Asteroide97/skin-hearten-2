@@ -10,6 +10,7 @@ const sections = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/intelligence", label: "Centro de Inteligencia" },
   { href: "/admin/productos", label: "Productos" },
+  { href: "/admin/rutinas", label: "Rutinas" },
   { href: "/admin/cupones", label: "Cupones" },
   { href: "/admin/reviews", label: "Resenas" },
   { href: "/admin/pedidos", label: "Pedidos" },

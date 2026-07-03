@@ -25,6 +25,7 @@ from app.models.crm import (
 from app.models.imports import ImportJob
 from app.models.identity import Customer, CustomerAddress, Role, User
 from app.models.marketing import SkinQuizLead
+from app.models.routines import Routine, RoutineProductLink, RoutineStep
 
 __all__ = [
     "Base",
@@ -54,6 +55,9 @@ __all__ = [
     "Product",
     "ProductImage",
     "ProductReview",
+    "Routine",
+    "RoutineProductLink",
+    "RoutineStep",
     "Role",
     "SkinQuizLead",
     "Setting",
