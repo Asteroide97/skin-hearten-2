@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SkinRoutineGuide } from "@/components/quiz/skin-routine-guide";
 import { SkinQuizTrigger } from "@/components/quiz/skin-quiz-trigger";
 import { ArrowUpRightIcon, CheckCircleIcon } from "@/components/shared/icons";
+import { JsonLd } from "@/components/shared/json-ld";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { EditorialFigure } from "@/components/store/editorial-figure";
@@ -11,35 +13,27 @@ import { ProductCard } from "@/components/store/product-card";
 import { ReviewsShowcase } from "@/components/store/reviews-showcase";
 import { createEmptyReviewsSummary } from "@/lib/reviews";
 import { getReviewsSummary } from "@/lib/reviews-api";
+import {
+  absoluteUrl,
+  buildBreadcrumbJsonLd,
+  buildCollectionPageJsonLd,
+  buildOrganizationJsonLd,
+  buildPublicMetadata,
+  buildWebsiteJsonLd,
+} from "@/lib/seo";
 import { getBrands, getProducts } from "@/lib/storefront-api";
 import {
-  benefits,
   blogPosts,
   shopNeeds,
   testimonials,
 } from "@/lib/site-data";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-export const metadata: Metadata = {
-  title: "Skincare premium para manchas, antiedad e hidratacion",
+export const metadata: Metadata = buildPublicMetadata({
+  title: "Rutinas premium para manchas, hidratacion y piel sensible",
   description:
-    "Compra skincare premium segun tu necesidad: manchas, antiedad, sensibilidad, hidratacion y protector solar con envio a todo Mexico.",
-  openGraph: {
-    title: "Skin Hearten | Skincare premium por necesidad real",
-    description:
-      "Rutinas curadas para manchas, antiedad, hidratacion, sensibilidad y proteccion solar.",
-    type: "website",
-    siteName: "Skin Hearten",
-    url: siteUrl,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Skin Hearten | Skincare premium por necesidad real",
-    description:
-      "Compra productos, marcas e ingredientes con enfoque en conversion, confianza y compra movil.",
-  },
-};
+    "Diagnostico guiado, rutinas premium y skincare seleccionado para manchas, hidratacion, sensibilidad y proteccion solar en Mexico.",
+  path: "/",
+});
 
 const trustSignals = [
   "Productos originales",
@@ -48,25 +42,28 @@ const trustSignals = [
   "Asesoria especializada",
 ];
 
-const organizationJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "Skin Hearten",
-  url: siteUrl,
-  description:
-    "Ecommerce de skincare premium para mujeres que buscan soluciones para manchas, antiedad, hidratacion, sensibilidad y proteccion solar.",
-  email: "hola@skinhearten.com",
-  areaServed: "MX",
-  contactPoint: [
-    {
-      "@type": "ContactPoint",
-      contactType: "customer support",
-      email: "hola@skinhearten.com",
-      areaServed: "MX",
-      availableLanguage: ["es"],
-    },
-  ],
-};
+const educationMoments = [
+  {
+    eyebrow: "La ciencia detras",
+    title: "Menos pasos funciona mejor cuando cada formula tiene una razon.",
+    description: "Activos, barrera y consistencia explicados con lenguaje claro.",
+  },
+  {
+    eyebrow: "Como se usa",
+    title: "Manana y noche no es una regla. Es una forma de bajar friccion.",
+    description: "Te ayudamos a entender orden, frecuencia y combinaciones sin sobrecargar la piel.",
+  },
+  {
+    eyebrow: "Errores comunes",
+    title: "Exfoliar de mas, mezclar sin criterio o abandonar a la semana.",
+    description: "La educacion evita decisiones impulsivas y mejora adherencia a la rutina.",
+  },
+  {
+    eyebrow: "Ingredientes",
+    title: "Lo importante no es memorizar INCI. Es saber por que esta cada cosa.",
+    description: "Peptidos, niacinamida, ceramidas o filtros: cada uno resuelve un momento distinto.",
+  },
+];
 
 export default async function HomePage() {
   const [catalogProducts, storefrontBrands, reviewsSummaryResult] = await Promise.all([
@@ -83,37 +80,58 @@ export default async function HomePage() {
   const leadTestimonial = testimonials[0];
   const supportingTestimonials = testimonials.slice(1, 4);
   const reviewsSummary = reviewsSummaryResult.ok ? reviewsSummaryResult.data : createEmptyReviewsSummary();
+  const homeSchemas = [
+    buildOrganizationJsonLd(),
+    buildWebsiteJsonLd(),
+    buildCollectionPageJsonLd({
+      path: "/",
+      name: "Skin Hearten Home",
+      description:
+        "Portada editorial de Skin Hearten con rutinas premium, categorias por necesidad y productos curados para skincare.",
+    }),
+    buildBreadcrumbJsonLd([
+      { name: "Inicio", path: "/" },
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "Productos destacados Skin Hearten",
+      itemListElement: featured.map((product, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: absoluteUrl(`/producto/${product.slug}`),
+        name: product.name,
+      })),
+    },
+  ];
 
   return (
     <>
-      <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        type="application/ld+json"
-      />
+      <JsonLd data={homeSchemas} />
       <div className="home-page mx-auto max-w-[1320px] space-y-24 px-5 py-6 sm:px-6 lg:space-y-28 lg:px-8 lg:py-10">
-        <section className="grid gap-10 border-b border-stone-200 pb-18 lg:grid-cols-[0.78fr_1.22fr] lg:items-end lg:pb-24">
-          <div className="max-w-xl space-y-8 lg:pb-8">
+        <section className="grid gap-10 border-b border-stone-200 pb-18 lg:grid-cols-[0.84fr_1.16fr] lg:items-start lg:pb-24">
+          <div className="max-w-xl space-y-8 lg:pt-8">
             <div className="space-y-4">
-              <p className="section-label">Skin Hearten</p>
+              <p className="section-label">Te entendemos</p>
               <h1 className="font-serif text-[3.15rem] leading-[0.92] text-stone-950 sm:text-[4.15rem] lg:text-[5.35rem]">
-                Piel calma.
+                Tu piel no necesita mas productos.
                 <br />
-                Rutinas precisas.
+                Necesita direccion.
               </h1>
               <p className="max-w-md text-base leading-8 text-stone-600">
-                Skincare curado para manchas, hidratacion, sensibilidad y antiedad.
+                Empezamos por lo que quieres mejorar. Despues construimos una rutina que si quieras seguir.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link className="btn-primary px-6 py-3.5" href="#shop-needs">
-                Comprar ahora
-              </Link>
-              <SkinQuizTrigger className="btn-secondary px-6 py-3.5" source="home">
+              <SkinQuizTrigger className="btn-primary px-6 py-3.5" source="home">
                 Encontrar mi rutina
               </SkinQuizTrigger>
-              <Link className="btn-ghost px-0 py-3 text-stone-950" href="#bestsellers">
-                Ver bestsellers
+              <SkinQuizTrigger className="btn-secondary px-6 py-3.5" source="home">
+                Diagnostico en 2 minutos
+              </SkinQuizTrigger>
+              <Link className="btn-ghost px-0 py-3 text-stone-950" href="#featured-products">
+                Ver la seleccion
               </Link>
             </div>
 
@@ -151,24 +169,47 @@ export default async function HomePage() {
               description="La portada deja sitio para retrato, gesto y empaque sin recurrir a placeholders gigantes."
               frame="portrait"
               label="Cover frame"
-              title="Una marca que se lee como revista y compra como ecommerce."
+              title="Una marca que se lee como revista y acompana como consultora."
               tone="blush"
             />
+          </div>
+        </section>
+
+        <SkinRoutineGuide />
+
+        <section className="grid gap-8 lg:grid-cols-[0.76fr_1.24fr] lg:items-start" id="featured-products">
+          <div className="space-y-5 lg:pt-8">
+            <SectionHeading
+              eyebrow="Tu seleccion"
+              title="Aqui aparecen los productos. Ya con contexto."
+              description="Cada formula llega despues del diagnostico, la rutina y la razon de uso."
+            />
+            <p className="max-w-sm text-sm leading-7 text-stone-600">
+              No es una lista infinita primero. Es una rutina que aterriza en esenciales concretos.
+            </p>
+            <Link className="btn-ghost px-0 py-0 text-stone-950" href="/productos">
+              Ver toda la seleccion
+            </Link>
+          </div>
+          <div className="grid gap-x-6 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
+            {featured.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
         </section>
 
         <section className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr]" id="shop-needs">
           <div className="space-y-6 lg:sticky lg:top-28 lg:self-start">
             <SectionHeading
-              eyebrow="Compra segun tu necesidad"
-              title="Empieza por lo que quieres cambiar."
-              description="Acne, manchas, hidratacion o sensibilidad. Menos friccion. Mejor decision."
+              eyebrow="Si prefieres explorar"
+              title="Tambien puedes entrar por necesidad."
+              description="Una ruta secundaria para quien ya sabe si busca acne, manchas, hidratacion o sensibilidad."
             />
             <p className="max-w-sm text-sm leading-7 text-stone-600">
-              Cada entrada conduce a una seleccion concreta, no a un catalogo infinito.
+              Cada entrada conduce a una seleccion concreta, no a una exploracion abierta sin criterio.
             </p>
             <Link className="btn-ghost px-0 py-0 text-stone-950" href="/productos">
-              Ver catalogo completo
+              Ver toda la seleccion
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -192,25 +233,26 @@ export default async function HomePage() {
             description="Una base lista para retratos, ingredientes y escenas de bano minimalista."
             frame="vanity"
             label="Editorial space"
-            title="La textura tambien vende cuando la marca respira."
+            title="La educacion tambien acompana cuando la rutina es clara."
             tone="sand"
           />
           <div className="grid gap-8 content-start">
             <div className="space-y-4">
-              <p className="section-label">La experiencia</p>
+              <p className="section-label">La ciencia detras</p>
               <h2 className="max-w-xl font-serif text-[2.45rem] leading-[0.98] text-stone-950 sm:text-[3rem]">
-                Menos ruido. Mas criterio.
+                No vendemos primero. Explicamos primero.
               </h2>
               <p className="max-w-xl text-sm leading-7 text-stone-600 sm:text-base">
-                Marcas seleccionadas, informacion suficiente y una compra que no interrumpe la lectura.
+                La piel mejora mas facil cuando entiendes que hace cada paso y por que esta en tu rutina.
               </p>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
-              {benefits.slice(0, 4).map((benefit) => (
-                <div className="border-t border-stone-200 pt-4" key={benefit.title}>
-                  <p className="text-sm font-semibold text-stone-900">{benefit.title}</p>
-                  <p className="mt-2 text-sm leading-7 text-stone-600">{benefit.description}</p>
+              {educationMoments.map((moment) => (
+                <div className="border-t border-stone-200 pt-4" key={moment.title}>
+                  <p className="section-label">{moment.eyebrow}</p>
+                  <p className="mt-3 text-sm font-semibold text-stone-900">{moment.title}</p>
+                  <p className="mt-2 text-sm leading-7 text-stone-600">{moment.description}</p>
                 </div>
               ))}
             </div>
@@ -223,27 +265,6 @@ export default async function HomePage() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
-
-        <section className="grid gap-8 lg:grid-cols-[0.76fr_1.24fr] lg:items-start">
-          <div className="space-y-5 lg:pt-8">
-            <SectionHeading
-              eyebrow="Productos destacados"
-              title="Menos caja. Mas producto."
-              description="Fotografia, beneficio, precio y un CTA claro desde el primer vistazo."
-            />
-            <p className="max-w-sm text-sm leading-7 text-stone-600">
-              El producto queda al centro. La interfaz se hace a un lado.
-            </p>
-            <Link className="btn-ghost px-0 py-0 text-stone-950" href="/productos">
-              Explorar toda la seleccion
-            </Link>
-          </div>
-          <div className="grid gap-x-6 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
-            {featured.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
           </div>
         </section>
 

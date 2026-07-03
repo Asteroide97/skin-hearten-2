@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { JsonLd } from "@/components/shared/json-ld";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { formatLongDate } from "@/lib/format";
 import { createEmptyReviewsList } from "@/lib/reviews";
 import { getApprovedReviews } from "@/lib/reviews-api";
+import { absoluteUrl, buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildPublicMetadata } from "@/lib/seo";
 import { getProducts } from "@/lib/storefront-api";
 
 type ReviewsPageProps = {
@@ -17,11 +19,12 @@ type ReviewsPageProps = {
   }>;
 };
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPublicMetadata({
   title: "Resenas de Skin Hearten",
   description:
     "Consulta opiniones aprobadas de clientas de Skin Hearten y deja tu propia resena verificada si ya compraste.",
-};
+  path: "/reviews",
+});
 
 function buildQueryString(params: {
   page?: number;
@@ -66,9 +69,50 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const reviewList = reviewResult.ok ? reviewResult.data : createEmptyReviewsList(currentPage, pageSize);
   const canGoBack = reviewList.page > 1;
   const canGoForward = reviewList.page < reviewList.totalPages;
+  const reviewSchemas = [
+    buildCollectionPageJsonLd({
+      path: "/reviews",
+      name: "Resenas de Skin Hearten",
+      description:
+        "Coleccion de opiniones aprobadas y resenas verificadas publicadas por clientas de Skin Hearten.",
+    }),
+    buildBreadcrumbJsonLd([
+      { name: "Inicio", path: "/" },
+      { name: "Resenas", path: "/reviews" },
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "Resenas publicadas de Skin Hearten",
+      itemListElement: reviewList.items.slice(0, 10).map((review, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: {
+          "@type": "Review",
+          reviewRating: {
+            "@type": "Rating",
+            ratingValue: review.rating,
+            bestRating: 5,
+          },
+          author: {
+            "@type": "Person",
+            name: review.customerName,
+          },
+          reviewBody: review.body,
+          datePublished: review.createdAt,
+          itemReviewed: {
+            "@type": "Product",
+            name: review.productName,
+            url: absoluteUrl(`/producto/${review.productSlug}`),
+          },
+        },
+      })),
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-5 py-8 sm:px-6 lg:px-8">
+      <JsonLd data={reviewSchemas} />
       <section className="overflow-hidden rounded-[2.2rem] bg-stone-950 px-5 py-8 text-white shadow-[0_36px_90px_rgba(27,20,16,0.16)] sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
           <div>

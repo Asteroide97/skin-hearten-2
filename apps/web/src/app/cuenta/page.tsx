@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CustomerOrdersLookup } from "@/components/account/customer-orders-lookup";
+import { JsonLd } from "@/components/shared/json-ld";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { buildBreadcrumbJsonLd, buildPublicMetadata } from "@/lib/seo";
 
 const accountBlocks = [
   {
@@ -22,9 +25,24 @@ const accountBlocks = [
   },
 ];
 
+export const metadata: Metadata = buildPublicMetadata({
+  title: "Cuenta y consulta de pedidos",
+  description:
+    "Consulta pedidos reales con tu email o telefono y accede al area de cuenta de Skin Hearten.",
+  path: "/cuenta",
+});
+
 export default function AccountPage() {
+  const accountSchemas = [
+    buildBreadcrumbJsonLd([
+      { name: "Inicio", path: "/" },
+      { name: "Cuenta", path: "/cuenta" },
+    ]),
+  ];
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-5 py-8 sm:px-6 lg:px-8">
+      <JsonLd data={accountSchemas} />
       <SectionHeading
         eyebrow="Cuenta"
         title="Tu cuenta Skin Hearten"

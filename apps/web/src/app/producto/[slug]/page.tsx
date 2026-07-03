@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { notFound } from "next/navigation";
 
+import { JsonLd } from "@/components/shared/json-ld";
 import { CheckCircleIcon } from "@/components/shared/icons";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { EditorialFigure } from "@/components/store/editorial-figure";
@@ -9,8 +10,15 @@ import { ProductReviewsSection } from "@/components/store/product-reviews-sectio
 import { RoutineBuilderTrigger } from "@/components/store/routine-builder-trigger";
 import { ProductViewTracker } from "@/components/store/product-view-tracker";
 import { formatCurrency } from "@/lib/format";
+import type { ProductReviewSummary } from "@/lib/product-reviews";
 import { createEmptyProductReviewSummary } from "@/lib/product-reviews";
 import { getProductReviews } from "@/lib/product-reviews-api";
+import {
+  absoluteUrl,
+  buildBreadcrumbJsonLd,
+  buildPublicMetadata,
+  resolveSeoImage,
+} from "@/lib/seo";
 import { getProductBySlug } from "@/lib/storefront-api";
 
 type ProductDetailPageProps = {
@@ -59,10 +67,12 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
     return {};
   }
 
-  return {
-    title: `${product.name} | Skin Hearten`,
+  return buildPublicMetadata({
+    title: product.name,
     description: product.highlight,
-  };
+    path: `/producto/${product.slug}`,
+    image: product.image,
+  });
 }
 
 export default async function ProductDetailPage({ params, searchParams }: ProductDetailPageProps) {
@@ -84,9 +94,11 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const experience = buildProductExperience(product);
   const sourceHint = query.source === "category" ? "category" : "product";
   const categoryHint = query.category ?? product.category;
+  const productSchemas = buildProductSchemas(product, reviewSummary);
 
   return (
     <div className="product-page mx-auto max-w-[1180px] space-y-12 px-5 py-8 sm:px-6 lg:px-8 lg:space-y-14">
+      <JsonLd data={productSchemas} />
       <ProductViewTracker
         category={product.category}
         price={product.price}
@@ -429,6 +441,76 @@ function buildUsageTimeline(
       label: "Frecuencia",
       title: "Constancia antes que intensidad",
       description: frequency,
+    },
+  ];
+}
+
+function buildProductSchemas(
+  product: NonNullable<Awaited<ReturnType<typeof getProductBySlug>>>,
+  reviewSummary: ProductReviewSummary,
+) {
+  const reviews = reviewSummary.reviews.slice(0, 5).map((review) => ({
+    "@type": "Review",
+    author: {
+      "@type": "Person",
+      name: review.customerName,
+    },
+    datePublished: review.createdAt,
+    reviewBody: review.body,
+    name: review.title ?? `Opinion sobre ${product.name}`,
+    reviewRating: {
+      "@type": "Rating",
+      ratingValue: review.rating,
+      bestRating: 5,
+    },
+  }));
+
+  const aggregateRating =
+    reviewSummary.reviewCount > 0
+      ? {
+          "@type": "AggregateRating",
+          ratingValue: reviewSummary.averageRating,
+          reviewCount: reviewSummary.reviewCount,
+          bestRating: 5,
+        }
+      : product.reviewCount > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: product.rating,
+            reviewCount: product.reviewCount,
+            bestRating: 5,
+          }
+        : undefined;
+
+  return [
+    buildBreadcrumbJsonLd([
+      { name: "Inicio", path: "/" },
+      { name: "Productos", path: "/productos" },
+      { name: product.name, path: `/producto/${product.slug}` },
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product.name,
+      description: product.description,
+      sku: product.sku,
+      category: product.category,
+      image: [resolveSeoImage(product.image)],
+      brand: {
+        "@type": "Brand",
+        name: product.brand,
+      },
+      offers: {
+        "@type": "Offer",
+        url: absoluteUrl(`/producto/${product.slug}`),
+        priceCurrency: "MXN",
+        price: product.price,
+        availability:
+          product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        itemCondition: "https://schema.org/NewCondition",
+      },
+      aggregateRating,
+      review: reviews.length > 0 ? reviews : undefined,
     },
   ];
 }

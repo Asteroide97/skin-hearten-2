@@ -1,15 +1,49 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
+import { JsonLd } from "@/components/shared/json-ld";
 import { ArrowUpRightIcon } from "@/components/shared/icons";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { absoluteUrl, buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildPublicMetadata } from "@/lib/seo";
 import { blogPosts } from "@/lib/site-data";
+
+export const metadata: Metadata = buildPublicMetadata({
+  title: "Blog editorial de skincare",
+  description:
+    "Articulos editoriales sobre rutinas, ingredientes, protector solar y cuidado de la piel en tono premium.",
+  path: "/blog",
+});
 
 export default function BlogListingPage() {
   const featuredPost = blogPosts[0];
   const remainingPosts = blogPosts.slice(1);
+  const blogSchemas = [
+    buildCollectionPageJsonLd({
+      path: "/blog",
+      name: "Blog Skin Hearten",
+      description:
+        "Articulos editoriales de Skin Hearten sobre rutinas, ingredientes y educacion en skincare.",
+    }),
+    buildBreadcrumbJsonLd([
+      { name: "Inicio", path: "/" },
+      { name: "Blog", path: "/blog" },
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "Articulos del blog Skin Hearten",
+      itemListElement: blogPosts.map((post, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: absoluteUrl(`/blog/${post.slug}`),
+        name: post.title,
+      })),
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-5 py-8 sm:px-6 lg:px-8">
+      <JsonLd data={blogSchemas} />
       <SectionHeading
         eyebrow="Diario Skin Hearten"
         title="Contenido editorial para reforzar autoridad y conversion"
