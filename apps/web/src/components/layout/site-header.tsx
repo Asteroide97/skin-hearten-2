@@ -8,7 +8,7 @@ import { SkinQuizTrigger } from "@/components/quiz/skin-quiz-trigger";
 import { CartIcon, WhatsAppIcon } from "@/components/shared/icons";
 import { SiteSearch } from "@/components/layout/site-search";
 import { useStoredSkinQuizResult } from "@/hooks/use-stored-skin-quiz-result";
-import type { Product } from "@/lib/types";
+import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
 import { useCartStore } from "@/store/cart-store";
 
 const navItems = [
@@ -22,7 +22,7 @@ const navItems = [
 ];
 
 type SiteHeaderProps = {
-  catalogProducts: Product[];
+  catalogProducts: GuidedCatalogProduct[];
 };
 
 export function SiteHeader({ catalogProducts }: SiteHeaderProps) {

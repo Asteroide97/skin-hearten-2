@@ -1,6 +1,6 @@
 import { blogPosts } from "@/lib/site-data";
+import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
 import { getFallbackRoutines } from "@/lib/routines";
-import type { Product } from "@/lib/types";
 
 export type AdvisorSearchResultKind =
   | "problema"
@@ -255,7 +255,7 @@ function buildProblemResults(matchedProblems: ProblemDefinition[]): AdvisorSearc
 
 function buildIngredientResults(
   matchedIngredient: IngredientDefinition | null,
-  products: Product[],
+  products: GuidedCatalogProduct[],
 ): AdvisorSearchResult[] {
   if (!matchedIngredient) {
     return [];
@@ -352,7 +352,7 @@ function buildRoutineResults(
   });
 }
 
-function getProblemProductScore(product: Product, problem: ProblemDefinition) {
+function getProblemProductScore(product: GuidedCatalogProduct, problem: ProblemDefinition) {
   const haystack = normalizeText(
     [product.category, product.highlight, ...product.concerns, ...product.skinTypes, ...product.ingredients].join(" "),
   );
@@ -375,7 +375,7 @@ function buildProductResults(
   query: string,
   matchedProblems: ProblemDefinition[],
   matchedIngredient: IngredientDefinition | null,
-  products: Product[],
+  products: GuidedCatalogProduct[],
 ): AdvisorSearchResult[] {
   const scored = products
     .map((product) => {
@@ -562,7 +562,7 @@ export function buildAdvisorCatalogHref(rawQuery: string) {
 
 export function buildAdvisorSearchExperience(
   rawQuery: string,
-  products: Product[],
+  products: GuidedCatalogProduct[],
 ): AdvisorSearchExperience {
   const query = normalizeText(rawQuery);
 

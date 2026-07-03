@@ -1,4 +1,4 @@
-import type { Product } from "@/lib/types";
+import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
 
 export const SKIN_QUIZ_COMPLETED_KEY = "skin_quiz_completed";
 export const SKIN_QUIZ_DISMISSED_UNTIL_KEY = "skin_quiz_dismissed_until";
@@ -57,7 +57,7 @@ export type SkinQuizQuestion<TId extends SkinQuizQuestionId = SkinQuizQuestionId
 
 export type SkinQuizRoutineStep = {
   slot: string;
-  product: Product;
+  product: GuidedCatalogProduct;
   note: string;
 };
 
@@ -66,7 +66,7 @@ export type SkinQuizResult = {
   summary: string;
   amRoutine: SkinQuizRoutineStep[];
   pmRoutine: SkinQuizRoutineStep[];
-  recommendedProducts: Product[];
+  recommendedProducts: GuidedCatalogProduct[];
   collectionHref: string;
   recommendedProductIds: string[];
   generatedAt: string;
@@ -273,7 +273,11 @@ function getPreferredSkinTypes(answers: SkinQuizAnswers, isSensitive: boolean) {
   return Array.from(new Set(skinTypes));
 }
 
-function selectCatalogProduct(products: Product[], options: ProductSelectionOptions, fallback: Product) {
+function selectCatalogProduct(
+  products: GuidedCatalogProduct[],
+  options: ProductSelectionOptions,
+  fallback: GuidedCatalogProduct,
+) {
   const normalizedCategories = options.categories?.map((value) => normalizeQuizText(value)) ?? [];
   const normalizedConcerns = options.concerns?.map((value) => normalizeQuizText(value)) ?? [];
   const normalizedSkinTypes = options.skinTypes?.map((value) => normalizeQuizText(value)) ?? [];
@@ -287,7 +291,7 @@ function selectCatalogProduct(products: Product[], options: ProductSelectionOpti
   const rankedPool = availablePool.length > 0 ? availablePool : pool;
 
   const rankedProducts = [...rankedPool].sort((left, right) => {
-    const getScore = (product: Product) => {
+    const getScore = (product: GuidedCatalogProduct) => {
       let score = 0;
       const productConcerns = product.concerns.map((value) => normalizeQuizText(value));
       const productSkinTypes = product.skinTypes.map((value) => normalizeQuizText(value));
@@ -331,7 +335,7 @@ function getCollectionHref(goal: SkinQuizGoal) {
   }
 }
 
-function dedupeProducts(products: Product[]) {
+function dedupeProducts(products: GuidedCatalogProduct[]) {
   return products.filter((product, index, list) => list.findIndex((entry) => entry.id === product.id) === index);
 }
 
@@ -361,7 +365,7 @@ function getRecommendedLimit(timeCommitment: SkinQuizCommitment) {
   }
 }
 
-function buildSummary(answers: SkinQuizAnswers, recommendedProducts: Product[]) {
+function buildSummary(answers: SkinQuizAnswers, recommendedProducts: GuidedCatalogProduct[]) {
   const sensitivityCopy =
     answers.skinType === "sensible" ||
     answers.sensitivity === "muy_sensible" ||
@@ -515,7 +519,10 @@ export function getSkinQuizCommitmentLabel(value: SkinQuizCommitment) {
   return commitmentLabels[value];
 }
 
-export function calculateSkinQuizResult(answers: SkinQuizAnswers, products: Product[]): SkinQuizResult {
+export function calculateSkinQuizResult(
+  answers: SkinQuizAnswers,
+  products: GuidedCatalogProduct[],
+): SkinQuizResult {
   if (products.length === 0) {
     throw new Error("Skin quiz requires at least one product in the catalog.");
   }
@@ -620,7 +627,7 @@ export function calculateSkinQuizResult(answers: SkinQuizAnswers, products: Prod
 
   let amRoutine: CandidateStep[] = [];
   let pmRoutine: CandidateStep[] = [];
-  let productPriority: Product[] = [];
+  let productPriority: GuidedCatalogProduct[] = [];
 
   switch (answers.goal) {
     case "manchas":

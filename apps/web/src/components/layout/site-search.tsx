@@ -5,16 +5,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SearchIcon } from "@/components/shared/icons";
 import { trackEvent } from "@/lib/analytics";
+import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
 import {
   buildAdvisorSearchExperience,
   type AdvisorSearchResult,
   type AdvisorSearchResultKind,
 } from "@/lib/skin-advisor-search";
-import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type SiteSearchProps = {
-  catalogProducts: Product[];
+  catalogProducts: GuidedCatalogProduct[];
   className?: string;
   showPromptSuggestions?: boolean;
 };

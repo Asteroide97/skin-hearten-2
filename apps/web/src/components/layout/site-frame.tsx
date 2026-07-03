@@ -4,10 +4,10 @@ import { usePathname } from "next/navigation";
 
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
-import type { Product } from "@/lib/types";
+import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
 
 type SiteFrameProps = {
-  catalogProducts: Product[];
+  catalogProducts: GuidedCatalogProduct[];
   children: React.ReactNode;
 };
 

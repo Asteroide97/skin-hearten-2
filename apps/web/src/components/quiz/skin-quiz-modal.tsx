@@ -7,6 +7,7 @@ import { ArrowUpRightIcon } from "@/components/shared/icons";
 import { SkinQuizLeadStep } from "@/components/quiz/skin-quiz-lead-step";
 import { SkinQuizResult } from "@/components/quiz/skin-quiz-result";
 import { trackEvent } from "@/lib/analytics";
+import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
 import {
   calculateSkinQuizResult,
   clearSkinQuizDismissal,
@@ -28,7 +29,6 @@ import {
   type SkinQuizResult as SkinQuizResultValue,
 } from "@/lib/skin-quiz";
 import type { SkinQuizLeadValues } from "@/schemas/skin-quiz-lead";
-import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useSkinQuizStore } from "@/store/skin-quiz-store";
 import { useCartStore } from "@/store/cart-store";
@@ -38,7 +38,7 @@ type DismissReason = "now_later" | "close";
 const dismissWindowInDays = getSkinQuizDismissedWindow() / (24 * 60 * 60 * 1000);
 
 type SkinQuizModalProps = {
-  catalogProducts: Product[];
+  catalogProducts: GuidedCatalogProduct[];
 };
 
 export function SkinQuizModal({ catalogProducts }: SkinQuizModalProps) {
@@ -334,9 +334,9 @@ export function SkinQuizModal({ catalogProducts }: SkinQuizModalProps) {
           <div className="relative flex h-full flex-col">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">Skin Hearten advisor</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">Diagnostico guiado</p>
                 <h2 className="mt-3 font-serif text-3xl leading-tight text-stone-950 sm:text-4xl">
-                  Recomendamos una rutina segun lo que tu piel necesita resolver.
+                  Recomendamos una rutina segun lo que tu piel necesita hoy.
                 </h2>
               </div>
               <button
@@ -362,7 +362,7 @@ export function SkinQuizModal({ catalogProducts }: SkinQuizModalProps) {
               </div>
               <p className="text-sm leading-7 text-stone-600">
                 {result
-                  ? "Tu recomendacion usa productos reales del catalogo actual y se adapta a tiempo, sensibilidad y objetivo principal."
+                  ? "Tu recomendacion se adapta a tiempo, sensibilidad y objetivo principal. Queda guardada para futuras visitas."
                   : isLeadStepActive
                     ? "Comparte a donde enviarte la rutina o continua sin dejar tus datos. La recomendacion no se bloquea si el lead no se sincroniza."
                     : "Una pregunta por pantalla, sin saturacion. Buscamos una rutina facil de seguir y alineada con tu objetivo."}
@@ -371,10 +371,10 @@ export function SkinQuizModal({ catalogProducts }: SkinQuizModalProps) {
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
-                "Productos existentes del catalogo",
+                "Productos reales disponibles hoy",
                 "Rutina AM y PM segun tu tiempo",
                 "Selecciones suaves si tu piel es sensible",
-                "CTA para agregar toda la rutina al carrito",
+                "Posibilidad de anadir toda la rutina",
               ].map((item) => (
                 <div className="rounded-[1.4rem] bg-white/70 px-4 py-4 text-sm text-stone-700 shadow-soft" key={item}>
                   {item}
@@ -402,7 +402,7 @@ export function SkinQuizModal({ catalogProducts }: SkinQuizModalProps) {
         <section className="bg-white p-5 sm:p-7 lg:p-8">
           {result ? (
             <SkinQuizResult
-              addButtonLabel={routineAdded ? "Rutina agregada" : "Agregar rutina al carrito"}
+              addButtonLabel={routineAdded ? "Rutina anadida" : "Anadir toda la rutina"}
               onAddRoutineToCart={handleAddRoutineToCart}
               onClose={close}
               onRestart={handleRestartQuiz}
@@ -457,7 +457,7 @@ export function SkinQuizModal({ catalogProducts }: SkinQuizModalProps) {
 
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-stone-500">
-                  {stepIndex > 0 ? "Puedes volver y ajustar la respuesta anterior." : "La rutina se calcula con el catalogo disponible en este momento."}
+                  {stepIndex > 0 ? "Puedes volver y ajustar la respuesta anterior." : "La rutina se calcula con la seleccion disponible en este momento."}
                 </div>
                 <div className="flex gap-3">
                   {stepIndex > 0 ? (

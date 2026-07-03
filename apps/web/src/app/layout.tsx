@@ -3,17 +3,20 @@ import { Manrope, Newsreader } from "next/font/google";
 
 import { SiteFrame } from "@/components/layout/site-frame";
 import { Providers } from "@/components/providers";
+import { toGuidedCatalogProducts } from "@/lib/guided-catalog";
 import { DEFAULT_OG_IMAGE_PATH, SITE_URL } from "@/lib/seo";
 import { getProducts } from "@/lib/storefront-api";
 
 import "./globals.css";
 
 const manrope = Manrope({
+  display: "swap",
   subsets: ["latin"],
   variable: "--font-manrope",
 });
 
 const newsreader = Newsreader({
+  display: "swap",
   subsets: ["latin"],
   variable: "--font-newsreader",
 });
@@ -53,7 +56,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const catalogProducts = await getProducts();
+  const catalogProducts = toGuidedCatalogProducts(await getProducts());
 
   return (
     <html className={`${manrope.variable} ${newsreader.variable}`} lang="es">
