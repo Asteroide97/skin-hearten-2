@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/store/product-card";
@@ -61,6 +62,14 @@ export function CatalogPage({
   const data = initialProducts;
   const concerns = Array.from(new Set(data.flatMap((product) => product.concerns)));
   const skinTypes = Array.from(new Set(data.flatMap((product) => product.skinTypes)));
+
+  function resetVisibleFilters() {
+    setSelectedCategory("all");
+    setSelectedConcern("all");
+    setSelectedSkinType("all");
+    setAvailability("all");
+    setSearchTerm("");
+  }
 
   const filteredProducts = useMemo(() => {
     const catalog = data.filter((product) => {
@@ -254,6 +263,21 @@ export function CatalogPage({
             <p className="mt-3 text-sm leading-7 text-stone-600">
               Ajusta categoria, problema o busqueda para ver una seleccion mas cercana a lo que tu piel necesita.
             </p>
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                className="btn-primary"
+                onClick={resetVisibleFilters}
+                type="button"
+              >
+                Limpiar filtros
+              </button>
+              <Link
+                className="btn-secondary"
+                href="/productos"
+              >
+                Ver todo el catalogo
+              </Link>
+            </div>
           </div>
         )}
       </div>

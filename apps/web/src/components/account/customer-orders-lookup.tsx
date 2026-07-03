@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
@@ -318,7 +319,28 @@ export function CustomerOrdersLookup() {
         {isLookupLoading ? (
           <EmptyBlock message="Consultando pedidos reales..." />
         ) : orders.length === 0 ? (
-          <EmptyBlock message={getLookupMessage(lookupErrorReason, hasSubmitted)} />
+          <div className="space-y-4">
+            <EmptyBlock message={getLookupMessage(lookupErrorReason, hasSubmitted)} />
+            {hasSubmitted ? (
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <a
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800"
+                  href={buildCustomerOrderSupportWhatsAppHref()}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <WhatsAppIcon className="h-4 w-4" />
+                  Pedir ayuda por WhatsApp
+                </a>
+                <Link
+                  className="inline-flex items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-900 transition hover:border-stone-500"
+                  href="/productos"
+                >
+                  Volver a productos
+                </Link>
+              </div>
+            ) : null}
+          </div>
         ) : (
           <div className="space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

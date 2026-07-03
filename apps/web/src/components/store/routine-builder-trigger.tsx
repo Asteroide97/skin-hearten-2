@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { trackEvent } from "@/lib/analytics";
@@ -44,6 +45,10 @@ function resolveAssetUrl(value: string | null | undefined) {
   return null;
 }
 
+function passthroughImageLoader({ src }: { src: string }) {
+  return src;
+}
+
 export function RoutineBuilderTrigger({
   product,
   buttonClassName = "btn-primary",
@@ -58,6 +63,7 @@ export function RoutineBuilderTrigger({
   const [resolvedRoutine, setResolvedRoutine] = useState<RoutineResolveData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionLabel, setActionLabel] = useState<"routine" | "single" | null>(null);
+  const isActionPending = actionLabel !== null;
 
   const resolvedSource: RoutineSource = storedQuizResult ? "skin_quiz" : sourceHint;
   const resolvedGoal = storedQuizResult?.answers.goal ?? null;
@@ -125,6 +131,10 @@ export function RoutineBuilderTrigger({
   }, [resolvedRoutine?.routine?.steps]);
 
   async function addSingleProduct() {
+    if (isActionPending) {
+      return;
+    }
+
     addItem({ productId: product.id, slug: product.slug, name: product.name, price: product.price });
     trackEvent("add_to_cart", {
       product_id: product.id,
@@ -140,6 +150,10 @@ export function RoutineBuilderTrigger({
   }
 
   async function addFullRoutine() {
+    if (isActionPending) {
+      return;
+    }
+
     const uniqueSteps = orderedSteps.filter(
       (step, index, list) => list.findIndex((entry) => entry.productSlug === step.productSlug) === index,
     );
@@ -202,6 +216,7 @@ export function RoutineBuilderTrigger({
 
                 <button
                   className="self-start rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700"
+                  disabled={isActionPending}
                   onClick={() => {
                     setIsOpen(false);
                   }}
@@ -212,7 +227,34 @@ export function RoutineBuilderTrigger({
               </div>
 
               {isLoading ? (
-                <div className="py-16 text-center text-sm text-stone-500">Preparando la rutina sugerida...</div>
+                <div className="mt-8 grid gap-5 lg:grid-cols-[0.72fr_1.28fr]" aria-hidden="true">
+                  <div className="rounded-[2rem] bg-[#f7efe7] p-6 sm:p-7">
+                    <div className="h-3 w-24 animate-pulse rounded-full bg-stone-200" />
+                    <div className="mt-4 h-10 w-3/4 animate-pulse rounded-full bg-stone-200" />
+                    <div className="mt-4 h-3 w-full animate-pulse rounded-full bg-stone-200" />
+                    <div className="mt-3 h-3 w-5/6 animate-pulse rounded-full bg-stone-200" />
+                    <div className="mt-6 flex gap-2">
+                      <div className="h-8 w-32 animate-pulse rounded-full bg-white/80" />
+                      <div className="h-8 w-24 animate-pulse rounded-full bg-white/80" />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <div
+                        className="rounded-[2rem] border border-stone-200 bg-white px-4 py-5"
+                        key={`routine-loading-${index}`}
+                      >
+                        <div className="h-3 w-16 animate-pulse rounded-full bg-stone-200" />
+                        <div className="mt-4 h-36 animate-pulse rounded-[1.5rem] bg-stone-100" />
+                        <div className="mt-4 h-6 w-24 animate-pulse rounded-full bg-stone-100" />
+                        <div className="mt-4 h-8 w-4/5 animate-pulse rounded-full bg-stone-200" />
+                        <div className="mt-3 h-3 w-full animate-pulse rounded-full bg-stone-100" />
+                        <div className="mt-2 h-3 w-5/6 animate-pulse rounded-full bg-stone-100" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <>
                   {resolvedRoutine?.routine ? (
@@ -263,10 +305,16 @@ export function RoutineBuilderTrigger({
 
                               <div className="mt-4 overflow-hidden rounded-[1.5rem]">
                                 {assetUrl ? (
-                                  <img
+                                  <Image
                                     alt={step.productName}
                                     className="h-36 w-full object-cover"
+                                    height={288}
+                                    loader={passthroughImageLoader}
+                                    loading="lazy"
+                                    sizes="(min-width: 1280px) 220px, (min-width: 768px) 45vw, 100vw"
                                     src={assetUrl}
+                                    unoptimized
+                                    width={320}
                                   />
                                 ) : (
                                   <div
@@ -312,6 +360,7 @@ export function RoutineBuilderTrigger({
                       {resolvedRoutine?.routine ? (
                         <button
                           className="btn-primary"
+                          disabled={isLoading || isActionPending}
                           onClick={() => {
                             void addFullRoutine();
                           }}
@@ -322,6 +371,7 @@ export function RoutineBuilderTrigger({
                       ) : null}
                       <button
                         className="btn-secondary"
+                        disabled={isLoading || isActionPending}
                         onClick={() => {
                           void addSingleProduct();
                         }}
