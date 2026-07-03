@@ -1,8 +1,9 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/store/product-card";
+import { inferCatalogIntentFromSearch } from "@/lib/skin-advisor-search";
 import type { Category, Product } from "@/lib/types";
 
 type CatalogPageProps = {
@@ -22,17 +23,33 @@ type SortOption =
 
 export function CatalogPage({
   categories,
-  initialCategory = "all",
+  initialCategory,
   initialProducts,
-  initialSearch = "",
-  initialConcern = "all",
+  initialSearch,
+  initialConcern,
 }: CatalogPageProps) {
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
-  const [selectedConcern, setSelectedConcern] = useState(initialConcern);
+  const inferredIntent = useMemo(
+    () => inferCatalogIntentFromSearch(initialSearch ?? ""),
+    [initialSearch],
+  );
+  const syncedCategory = initialCategory ?? inferredIntent.category ?? "all";
+  const syncedConcern = initialConcern ?? inferredIntent.concern ?? "all";
+  const syncedSearch = initialSearch ?? "";
+
+  const [selectedCategory, setSelectedCategory] = useState(syncedCategory);
+  const [selectedConcern, setSelectedConcern] = useState(syncedConcern);
   const [selectedSkinType, setSelectedSkinType] = useState("all");
   const [availability, setAvailability] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("best-sellers");
-  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [searchTerm, setSearchTerm] = useState(syncedSearch);
+
+  useEffect(() => {
+    setSelectedCategory(syncedCategory);
+    setSelectedConcern(syncedConcern);
+    setSelectedSkinType("all");
+    setAvailability("all");
+    setSearchTerm(syncedSearch);
+  }, [syncedCategory, syncedConcern, syncedSearch]);
 
   const deferredCategory = useDeferredValue(selectedCategory);
   const deferredConcern = useDeferredValue(selectedConcern);

@@ -35,6 +35,12 @@ export type AdvisorSearchExperience = {
   topHref: string;
 };
 
+export type AdvisorCatalogIntent = {
+  category: string | null;
+  concern: string | null;
+  query: string;
+};
+
 type ProblemDefinition = {
   aliases: string[];
   articleKeywords: string[];
@@ -492,6 +498,68 @@ function buildIntro(query: string, matchedProblems: ProblemDefinition[], matched
   return "Cuentanos que quieres mejorar y te acercamos una ruta clara.";
 }
 
+function getCatalogFiltersFromProblem(problem: ProblemDefinition | undefined) {
+  if (!problem) {
+    return {
+      category: null,
+      concern: null,
+    };
+  }
+
+  switch (problem.id) {
+    case "manchas":
+      return { category: null, concern: "Manchas" };
+    case "hidratacion":
+      return { category: null, concern: "Deshidratacion" };
+    case "sensible":
+      return { category: null, concern: "Sensibilidad" };
+    case "acne":
+      return { category: null, concern: "Acne" };
+    case "antiedad":
+      return { category: null, concern: "Firmeza" };
+    case "protector_solar":
+      return { category: "protector-solar", concern: null };
+    default:
+      return {
+        category: null,
+        concern: null,
+      };
+  }
+}
+
+export function inferCatalogIntentFromSearch(rawQuery: string): AdvisorCatalogIntent {
+  const query = rawQuery.trim();
+  const normalizedQuery = normalizeText(query);
+  const matchedProblem = findMatchedProblems(normalizedQuery)[0];
+  const filters = getCatalogFiltersFromProblem(matchedProblem);
+
+  return {
+    category: filters.category,
+    concern: filters.concern,
+    query,
+  };
+}
+
+export function buildAdvisorCatalogHref(rawQuery: string) {
+  const intent = inferCatalogIntentFromSearch(rawQuery);
+  const params = new URLSearchParams();
+
+  if (intent.query) {
+    params.set("q", intent.query);
+  }
+
+  if (intent.category) {
+    params.set("categoria", intent.category);
+  }
+
+  if (intent.concern) {
+    params.set("problema", intent.concern);
+  }
+
+  const queryString = params.toString();
+  return queryString ? `/productos?${queryString}` : "/productos";
+}
+
 export function buildAdvisorSearchExperience(
   rawQuery: string,
   products: Product[],
@@ -526,13 +594,7 @@ export function buildAdvisorSearchExperience(
     productResults.length === 0 &&
     articleResults.length === 0;
 
-  const topHref =
-    problemResults[0]?.href ??
-    ingredientResults[0]?.href ??
-    routineResults[0]?.href ??
-    productResults[0]?.href ??
-    articleResults[0]?.href ??
-    `/productos?q=${encodeURIComponent(rawQuery.trim())}`;
+  const topHref = buildAdvisorCatalogHref(rawQuery);
 
   return {
     articleResults,
