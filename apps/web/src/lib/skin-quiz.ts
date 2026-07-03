@@ -5,6 +5,7 @@ export const SKIN_QUIZ_DISMISSED_UNTIL_KEY = "skin_quiz_dismissed_until";
 export const SKIN_QUIZ_LEAD_KEY = "skin_quiz_lead";
 export const SKIN_QUIZ_LEAD_SYNCED_KEY = "skin_quiz_lead_synced";
 export const SKIN_QUIZ_RESULT_KEY = "skin_quiz_result";
+export const SKIN_QUIZ_STORAGE_UPDATED_EVENT = "skin-quiz-storage-updated";
 export const SKIN_QUIZ_WHATSAPP_MESSAGE =
   "Hola, hice el Skin Quiz y quiero recibir ayuda con mi rutina recomendada.";
 export const SKIN_QUIZ_WHATSAPP_NUMBER = "525500000000";
@@ -129,6 +130,14 @@ const commitmentLabels: Record<SkinQuizCommitment, string> = {
   "10_min": "completa",
   sin_limite: "sin prisa",
 };
+
+function notifySkinQuizStorageUpdated() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(SKIN_QUIZ_STORAGE_UPDATED_EVENT));
+}
 
 export const skinQuizQuestions: SkinQuizQuestion[] = [
   {
@@ -362,7 +371,7 @@ function buildSummary(answers: SkinQuizAnswers, recommendedProducts: Product[]) 
   const habitCopy =
     answers.timeCommitment === "2_min" || answers.frequency === "casi_nunca"
       ? "Reducimos la propuesta a esenciales faciles de repetir todos los dias."
-      : `La seleccion se ajusta a una rutina ${commitmentLabels[answers.timeCommitment]} con productos que ya existen en el catalogo actual.`;
+      : `La seleccion se ajusta a una rutina ${commitmentLabels[answers.timeCommitment]} con productos que ya existen en la seleccion actual.`;
 
   return `Tu piel ${skinTypeLabels[answers.skinType]} con foco en ${goalLabels[answers.goal]} se beneficia de una seleccion curada de ${recommendedProducts.length} productos. ${sensitivityCopy} ${habitCopy}`;
 }
@@ -449,6 +458,7 @@ export function dismissSkinQuizForDays(days = 7) {
 
   const dismissedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
   storage.setItem(SKIN_QUIZ_DISMISSED_UNTIL_KEY, dismissedUntil);
+  notifySkinQuizStorageUpdated();
 }
 
 export function saveSkinQuizResult(result: SkinQuizResult) {
@@ -460,6 +470,7 @@ export function saveSkinQuizResult(result: SkinQuizResult) {
   storage.setItem(SKIN_QUIZ_COMPLETED_KEY, "true");
   storage.setItem(SKIN_QUIZ_RESULT_KEY, JSON.stringify(result));
   storage.removeItem(SKIN_QUIZ_DISMISSED_UNTIL_KEY);
+  notifySkinQuizStorageUpdated();
 }
 
 export function saveSkinQuizLead(lead: SkinQuizLead) {
@@ -469,6 +480,7 @@ export function saveSkinQuizLead(lead: SkinQuizLead) {
   }
 
   storage.setItem(SKIN_QUIZ_LEAD_KEY, JSON.stringify(lead));
+  notifySkinQuizStorageUpdated();
 }
 
 export function saveSkinQuizLeadSyncStatus(isSynced: boolean) {
@@ -478,6 +490,7 @@ export function saveSkinQuizLeadSyncStatus(isSynced: boolean) {
   }
 
   storage.setItem(SKIN_QUIZ_LEAD_SYNCED_KEY, String(isSynced));
+  notifySkinQuizStorageUpdated();
 }
 
 export function clearSkinQuizDismissal() {
@@ -487,6 +500,19 @@ export function clearSkinQuizDismissal() {
   }
 
   storage.removeItem(SKIN_QUIZ_DISMISSED_UNTIL_KEY);
+  notifySkinQuizStorageUpdated();
+}
+
+export function getSkinQuizSkinTypeLabel(value: SkinQuizSkinType) {
+  return skinTypeLabels[value];
+}
+
+export function getSkinQuizGoalLabel(value: SkinQuizGoal) {
+  return goalLabels[value];
+}
+
+export function getSkinQuizCommitmentLabel(value: SkinQuizCommitment) {
+  return commitmentLabels[value];
 }
 
 export function calculateSkinQuizResult(answers: SkinQuizAnswers, products: Product[]): SkinQuizResult {
