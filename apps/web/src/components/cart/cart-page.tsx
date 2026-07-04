@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { trackEvent } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/format";
@@ -25,6 +25,13 @@ export function CartPage() {
   const shipping = useMemo(() => getCartShipping(subtotal, coupon), [coupon, subtotal]);
   const total = useMemo(() => getCartTotal(subtotal, discount, shipping), [discount, shipping, subtotal]);
   const itemCount = useMemo(() => getCartItemCount(items), [items]);
+
+  useEffect(() => {
+    trackEvent("cart_viewed", {
+      cart_total: total,
+      item_count: itemCount,
+    });
+  }, [itemCount, total]);
 
   return (
     <div className="space-y-8">
@@ -121,12 +128,6 @@ export function CartPage() {
           <Link
             className="mt-8 inline-flex w-full items-center justify-center rounded-full bg-stone-950 px-5 py-3 text-sm font-medium text-white disabled:bg-stone-300"
             href="/checkout"
-            onClick={() => {
-              trackEvent("checkout_started", {
-                cart_total: total,
-                item_count: itemCount,
-              });
-            }}
           >
             Continuar con mi rutina
           </Link>

@@ -136,11 +136,12 @@ export function RoutineBuilderTrigger({
     }
 
     addItem({ productId: product.id, slug: product.slug, name: product.name, price: product.price });
-    trackEvent("add_to_cart", {
+    trackEvent("routine_single_added", {
       product_id: product.id,
       product_name: product.name,
-      quantity: 1,
-      price: product.price,
+      routine_id: resolvedRoutine?.routine?.id,
+      routine_name: resolvedRoutine?.routine?.name ?? null,
+      source: resolvedSource,
     });
     setActionLabel("single");
     window.setTimeout(() => {
@@ -172,12 +173,15 @@ export function RoutineBuilderTrigger({
         name: step.productName,
         price: stepPrice,
       });
-      trackEvent("add_to_cart", {
-        product_id: String(step.productId),
-        product_name: step.productName,
-        quantity: 1,
-        price: stepPrice,
-      });
+    });
+
+    trackEvent("routine_full_added", {
+      item_count: uniqueSteps.length,
+      product_id: product.id,
+      product_ids: uniqueSteps.map((step) => String(step.productId)),
+      routine_id: resolvedRoutine?.routine?.id,
+      routine_name: resolvedRoutine?.routine?.name ?? null,
+      source: resolvedSource,
     });
 
     setActionLabel("routine");
@@ -192,6 +196,11 @@ export function RoutineBuilderTrigger({
       <button
         className={buttonClassName}
         onClick={() => {
+          trackEvent("routine_builder_opened", {
+            product_id: product.id,
+            product_name: product.name,
+            source: resolvedSource,
+          });
           setIsOpen(true);
         }}
         type="button"

@@ -1,3 +1,4 @@
+from app.models.analytics import AnalyticsEvent
 from app.models.base import Base
 from app.models.catalog import Brand, Category, Product, ProductImage, ProductReview
 from app.models.commerce import (
@@ -29,6 +30,7 @@ from app.models.routines import Routine, RoutineProductLink, RoutineStep
 
 __all__ = [
     "Base",
+    "AnalyticsEvent",
     "Brand",
     "Cart",
     "CartItem",

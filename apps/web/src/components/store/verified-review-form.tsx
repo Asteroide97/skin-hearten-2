@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { UseFormRegisterReturn } from "react-hook-form";
 
 import { StarIcon } from "@/components/shared/icons";
+import { trackEvent } from "@/lib/analytics";
 import type { VerifiedReviewCreateInput } from "@/lib/reviews";
 import { verifiedReviewSchema, type VerifiedReviewFormValues } from "@/schemas/verified-review";
 
@@ -56,6 +57,15 @@ export function VerifiedReviewForm({ initialProductId, products }: VerifiedRevie
   });
 
   const selectedRating = form.watch("rating");
+
+  useEffect(() => {
+    trackEvent("review_started", {
+      product_id: initialProductId ?? undefined,
+      product_name:
+        products.find((product) => product.id === initialProductId)?.name ?? undefined,
+      source: "verified_reviews",
+    });
+  }, [initialProductId, products]);
 
   async function handleSubmit(values: VerifiedReviewFormValues) {
     const payload: VerifiedReviewCreateInput = {
@@ -108,6 +118,13 @@ export function VerifiedReviewForm({ initialProductId, products }: VerifiedRevie
       setNotice({
         kind: "success",
         message: "Gracias. Tu resena sera revisada antes de publicarse.",
+      });
+      trackEvent("review_submitted", {
+        product_id: values.productId > 0 ? String(values.productId) : undefined,
+        product_name: products.find((product) => Number(product.id) === values.productId)?.name,
+        rating: values.rating,
+        source: "verified_reviews",
+        verified: true,
       });
     } catch {
       setNotice({

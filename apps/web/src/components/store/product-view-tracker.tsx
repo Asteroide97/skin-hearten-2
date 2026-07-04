@@ -18,7 +18,7 @@ export function ProductViewTracker({
   price,
 }: ProductViewTrackerProps) {
   useEffect(() => {
-    trackEvent("product_view", {
+    trackEvent("product_viewed", {
       product_id: productId,
       product_name: productName,
       category,
@@ -28,4 +28,3 @@ export function ProductViewTracker({
 
   return null;
 }
-

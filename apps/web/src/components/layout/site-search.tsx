@@ -59,7 +59,7 @@ export function SiteSearch({
 
   function navigateTo(href: string, trackedQuery?: string) {
     if (trackedQuery) {
-      trackEvent("search_used", {
+      trackEvent("search_submitted", {
         query: trackedQuery,
         source: "header",
       });
@@ -73,7 +73,7 @@ export function SiteSearch({
     setQuery(promptQuery);
     setIsPanelOpen(true);
     inputRef.current?.focus();
-    trackEvent("search_used", {
+    trackEvent("search_submitted", {
       query: promptQuery,
       source: "header",
     });

@@ -27,6 +27,7 @@ from app.models import (
     Routine,
     SkinQuizLead,
 )
+from app.services.analytics_events import list_analytics_events
 from app.services.mock_store import (
     COUPON_REDEMPTIONS,
     COUPONS,
@@ -257,6 +258,17 @@ def _load_products(db: Session) -> list[dict[str, Any]]:
         ]
 
     return _safe_load(db, loader, fallback)
+
+
+def _load_analytics_events(db: Session) -> list[dict[str, Any]]:
+    def fallback() -> list[dict[str, Any]]:
+        return []
+
+    try:
+        return list_analytics_events(db)
+    except SQLAlchemyError:
+        db.rollback()
+        return fallback()
 
 
 def _load_customers(db: Session) -> list[dict[str, Any]]:
@@ -788,6 +800,7 @@ def _build_data_bundle(db: Session) -> dict[str, Any]:
     crm_tasks = _load_crm_tasks(db)
     crm_reminders = _load_crm_reminders(db)
     crm_events = _load_crm_events(db)
+    analytics_events = _load_analytics_events(db)
     skin_quiz_leads = _load_skin_quiz_leads(db)
     routines = _load_routines(db)
     coupons = _load_coupons(db)
@@ -804,6 +817,7 @@ def _build_data_bundle(db: Session) -> dict[str, Any]:
         "crm_tasks": crm_tasks,
         "crm_reminders": crm_reminders,
         "crm_events": crm_events,
+        "analytics_events": analytics_events,
         "skin_quiz_leads": skin_quiz_leads,
         "routines": routines,
         "coupons": coupons,
@@ -1850,8 +1864,25 @@ def _match_routine_name_for_lead(
 ) -> str | None:
     answers = lead.get("answers_json") or {}
     result = lead.get("result_json") or {}
-    lead_goal = str(answers.get("goal") or "").strip()
-    recommended_ids = {int(product_id) for product_id in result.get("recommendedProductIds", []) if str(product_id).isdigit()}
+    return _match_routine_name_from_goal_and_products(
+        lead_goal=str(answers.get("goal") or "").strip(),
+        recommended_ids={
+            int(product_id)
+            for product_id in result.get("recommendedProductIds", [])
+            if str(product_id).isdigit()
+        },
+        routines=routines,
+        routine_product_ids=routine_product_ids,
+    )
+
+
+def _match_routine_name_from_goal_and_products(
+    *,
+    lead_goal: str,
+    recommended_ids: set[int],
+    routines: dict[int, dict[str, Any]],
+    routine_product_ids: dict[int, set[int]],
+) -> str | None:
     best_name: str | None = None
     best_score = 0
 
@@ -1866,6 +1897,51 @@ def _match_routine_name_for_lead(
             best_name = str(routine.get("name") or "")
 
     return best_name if best_score > 0 and best_name else None
+
+
+def _get_analytics_event_name(event: dict[str, Any]) -> str:
+    return str(event.get("event_name") or "").strip()
+
+
+def _get_analytics_event_metadata(event: dict[str, Any]) -> dict[str, Any]:
+    metadata = event.get("metadata_json") or {}
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _group_analytics_events_by_session(
+    analytics_events: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for event in analytics_events:
+        session_id = str(event.get("session_id") or "").strip()
+        if not session_id:
+            continue
+        grouped[session_id].append(event)
+    return grouped
+
+
+def _classify_analytics_session_origin(events: list[dict[str, Any]]) -> str:
+    raw_sources = {
+        str(event.get("source") or "").strip().lower()
+        for event in events
+        if str(event.get("source") or "").strip()
+    }
+    raw_paths = {
+        str(event.get("path") or "").strip().lower()
+        for event in events
+        if str(event.get("path") or "").strip()
+    }
+    event_names = {_get_analytics_event_name(event) for event in events}
+
+    if "skin_quiz_started" in event_names or "skin_quiz_completed" in event_names or any("quiz" in source for source in raw_sources):
+        return "Quiz"
+    if "search_submitted" in event_names or any("q=" in path for path in raw_paths) or any("search" in source or "header" == source for source in raw_sources):
+        return "Busqueda"
+    if any("category=" in path or "categoria=" in path for path in raw_paths) or any("category" in source or "categoria" in source for source in raw_sources):
+        return "Categoria"
+    if any("/blog" in path for path in raw_paths) or any("blog" in source or "article" in source for source in raw_sources):
+        return "Blog"
+    return "Directo"
 
 
 def _match_routine_for_order(
@@ -1887,14 +1963,21 @@ def _match_routine_for_order(
 def _build_skin_quiz_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
     bundle = context["bundle"]
     leads = bundle["skin_quiz_leads"]
-    events = [event for event in bundle["crm_events"] if str(event.get("event_type")) == "skin_quiz_completed"]
+    analytics_events = bundle["analytics_events"]
+    analytics_started_events = [event for event in analytics_events if _get_analytics_event_name(event) == "skin_quiz_started"]
+    analytics_completed_events = [event for event in analytics_events if _get_analytics_event_name(event) == "skin_quiz_completed"]
+    crm_completed_events = [event for event in bundle["crm_events"] if str(event.get("event_type")) == "skin_quiz_completed"]
     profiles = context["profiles"]
     by_email, by_phone = _build_profile_identity_maps(profiles)
     product_by_id = {int(product["id"]): product for product in bundle["products"]}
     routines, routine_product_ids = _build_routine_maps(bundle)
 
-    started_count = None
-    completed_count = len(events) if events else len(leads)
+    started_count = len(analytics_started_events) if analytics_started_events else None
+    completed_count = (
+        len(analytics_completed_events)
+        if analytics_completed_events
+        else len(crm_completed_events) if crm_completed_events else len(leads)
+    )
     lead_count = len(leads)
     completion_rate = round((completed_count / started_count) * 100, 1) if started_count else None
 
@@ -1904,34 +1987,68 @@ def _build_skin_quiz_analysis(context: dict[str, Any], now: datetime) -> dict[st
     routine_counter: Counter[str] = Counter()
     recommended_counter: Counter[str] = Counter()
     purchased_counter: Counter[str] = Counter()
-    recommended_shares: Counter[str] = Counter()
-    purchased_shares: Counter[str] = Counter()
+    if analytics_completed_events:
+        for event in analytics_completed_events:
+            metadata = _get_analytics_event_metadata(event)
+            goal_value = str(metadata.get("goal") or "").strip() or None
+            skin_value = str(metadata.get("skin_type") or "").strip() or None
+            age_value = str(metadata.get("age_range") or "").strip() or None
+            recommended_ids = {
+                int(product_id)
+                for product_id in metadata.get("recommended_product_ids", [])
+                if str(product_id).isdigit()
+            }
+
+            goal_counter[_goal_label(goal_value) or "sin definir"] += 1
+            skin_type_counter[_skin_type_label(skin_value) or "sin definir"] += 1
+            age_counter[_age_range_label(age_value) or "sin definir"] += 1
+
+            routine_name = _match_routine_name_from_goal_and_products(
+                lead_goal=goal_value or "",
+                recommended_ids=recommended_ids,
+                routines=routines,
+                routine_product_ids=routine_product_ids,
+            )
+            if routine_name:
+                routine_counter[routine_name] += 1
+
+            for product_id in recommended_ids:
+                product = product_by_id.get(product_id)
+                if product:
+                    recommended_counter[str(product["name"])] += 1
+    else:
+        for lead in leads:
+            answers = lead.get("answers_json") or {}
+            result = lead.get("result_json") or {}
+            skin_type_counter[_skin_type_label(answers.get("skinType")) or "sin definir"] += 1
+            goal_counter[_goal_label(answers.get("goal")) or "sin definir"] += 1
+            age_counter[_age_range_label(answers.get("ageRange")) or "sin definir"] += 1
+
+            routine_name = _match_routine_name_for_lead(
+                lead,
+                routines=routines,
+                routine_product_ids=routine_product_ids,
+            )
+            if routine_name:
+                routine_counter[routine_name] += 1
+
+            recommended_ids = {
+                int(product_id)
+                for product_id in result.get("recommendedProductIds", [])
+                if str(product_id).isdigit()
+            }
+            for product_id in recommended_ids:
+                product = product_by_id.get(product_id)
+                if product:
+                    recommended_counter[str(product["name"])] += 1
 
     for lead in leads:
-        answers = lead.get("answers_json") or {}
         result = lead.get("result_json") or {}
-        skin_type_counter[_skin_type_label(answers.get("skinType")) or "sin definir"] += 1
-        goal_counter[_goal_label(answers.get("goal")) or "sin definir"] += 1
-        age_counter[_age_range_label(answers.get("ageRange")) or "sin definir"] += 1
-
-        routine_name = _match_routine_name_for_lead(
-            lead,
-            routines=routines,
-            routine_product_ids=routine_product_ids,
-        )
-        if routine_name:
-            routine_counter[routine_name] += 1
-
         recommended_ids = {
             int(product_id)
             for product_id in result.get("recommendedProductIds", [])
             if str(product_id).isdigit()
         }
-        for product_id in recommended_ids:
-            product = product_by_id.get(product_id)
-            if product:
-                recommended_counter[str(product["name"])] += 1
-
         profile = _find_profile_for_identity(
             email=lead.get("email"),
             phone=lead.get("whatsapp"),
@@ -1974,17 +2091,25 @@ def _build_skin_quiz_analysis(context: dict[str, Any], now: datetime) -> dict[st
             "label": "Iniciaron",
             "value": float(started_count) if started_count is not None else None,
             "display_value": str(started_count) if started_count is not None else "Sin telemetria",
-            "helper": "La tienda todavia no persiste aperturas ni arranques del quiz.",
-            "is_estimated": True,
-            "tone": "warning",
+            "helper": (
+                "Inicios reales persistidos desde el storefront."
+                if started_count is not None
+                else "La tienda todavia no persiste arranques del quiz en este entorno."
+            ),
+            "is_estimated": started_count is None,
+            "tone": "neutral" if started_count is not None else "warning",
         },
         {
             "id": "quiz_completed",
             "label": "Terminaron",
             "value": float(completed_count),
             "display_value": str(completed_count),
-            "helper": "Quizzes completados que quedaron persistidos en backend.",
-            "is_estimated": not bool(events),
+            "helper": (
+                "Finalizaciones reales persistidas por analytics."
+                if analytics_completed_events
+                else "Quizzes completados que quedaron persistidos por CRM o leads."
+            ),
+            "is_estimated": not bool(analytics_completed_events),
             "tone": "neutral",
         },
         {
@@ -2001,8 +2126,12 @@ def _build_skin_quiz_analysis(context: dict[str, Any], now: datetime) -> dict[st
             "label": "Conversion",
             "value": completion_rate,
             "display_value": _format_percent_precise(completion_rate) if completion_rate is not None else "Sin base",
-            "helper": "Se activara cuando exista telemetria persistida de inicios.",
-            "is_estimated": True,
+            "helper": (
+                "Relacion entre inicios y finalizaciones persistidas."
+                if completion_rate is not None
+                else "Se activara cuando exista base real de inicios."
+            ),
+            "is_estimated": completion_rate is None,
             "tone": "neutral",
         },
     ]
@@ -2074,12 +2203,19 @@ def _build_skin_quiz_analysis(context: dict[str, Any], now: datetime) -> dict[st
         "answers": answers,
         "recommended_products": _counter_to_ranked_items(recommended_counter, total=lead_count),
         "purchased_products": _counter_to_ranked_items(purchased_counter, total=lead_count),
-        "measurement_note": "Sin telemetria persistida de aperturas e inicios, esta lectura se basa en quizzes completados y leads sincronizados.",
+        "measurement_note": (
+            "Skin Quiz ya usa eventos persistidos para inicios y finalizaciones."
+            if started_count is not None and analytics_completed_events
+            else "Skin Quiz ya mide finalizaciones reales, pero la base de inicios aun es parcial."
+            if analytics_completed_events
+            else "Sin telemetria persistida de aperturas e inicios, esta lectura se basa en quizzes completados y leads sincronizados."
+        ),
     }
 
 
 def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
     bundle = context["bundle"]
+    analytics_events = bundle["analytics_events"]
     routines, routine_product_ids = _build_routine_maps(bundle)
     realized_orders = context["realized_orders"]
     items_by_order_id: dict[int, list[dict[str, Any]]] = defaultdict(list)
@@ -2091,6 +2227,10 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
     full_routine_value = 0.0
     single_product_value = 0.0
     routine_counter: Counter[str] = Counter()
+    routine_opened_events = [event for event in analytics_events if _get_analytics_event_name(event) == "routine_builder_opened"]
+    routine_full_added_events = [event for event in analytics_events if _get_analytics_event_name(event) == "routine_full_added"]
+    routine_single_added_events = [event for event in analytics_events if _get_analytics_event_name(event) == "routine_single_added"]
+    telemetry_routine_counter: Counter[str] = Counter()
 
     for order in realized_orders:
         order_items = items_by_order_id.get(int(order["id"]), [])
@@ -2115,6 +2255,17 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
             single_product_orders += 1
             single_product_value = round(single_product_value + order_total, 2)
 
+    for event in routine_full_added_events:
+        metadata = _get_analytics_event_metadata(event)
+        routine_name = str(metadata.get("routine_name") or "").strip()
+        if routine_name:
+            telemetry_routine_counter[routine_name] += 1
+
+    full_routine_count = len(routine_full_added_events) if routine_full_added_events else full_routine_orders
+    single_product_count = len(routine_single_added_events) if routine_single_added_events else single_product_orders
+    modal_opened_count = len(routine_opened_events) if routine_opened_events else None
+    ranked_routines = telemetry_routine_counter if telemetry_routine_counter else routine_counter
+
     average_full_routine_value = round(full_routine_value / full_routine_orders, 2) if full_routine_orders else 0.0
     average_single_product_value = round(single_product_value / single_product_orders, 2) if single_product_orders else 0.0
     ticket_lift = (
@@ -2127,28 +2278,40 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
         {
             "id": "routine_modal_opened",
             "label": "Modal abierto",
-            "value": None,
-            "display_value": "Sin telemetria",
-            "helper": "La apertura del modal todavia no se guarda de forma persistente.",
-            "is_estimated": True,
-            "tone": "warning",
+            "value": float(modal_opened_count) if modal_opened_count is not None else None,
+            "display_value": str(modal_opened_count) if modal_opened_count is not None else "Sin telemetria",
+            "helper": (
+                "Aperturas reales del modal persistidas por sesion."
+                if modal_opened_count is not None
+                else "La apertura del modal todavia no se guarda de forma persistente."
+            ),
+            "is_estimated": modal_opened_count is None,
+            "tone": "neutral" if modal_opened_count is not None else "warning",
         },
         {
             "id": "routine_full_orders",
             "label": "Rutina completa",
-            "value": float(full_routine_orders),
-            "display_value": str(full_routine_orders),
-            "helper": "Pedidos con 3 o mas pasos de una misma rutina.",
-            "is_estimated": True,
-            "tone": "positive" if full_routine_orders > 0 else "neutral",
+            "value": float(full_routine_count),
+            "display_value": str(full_routine_count),
+            "helper": (
+                "Clicks reales en Agregar rutina completa."
+                if routine_full_added_events
+                else "Pedidos con 3 o mas pasos de una misma rutina."
+            ),
+            "is_estimated": not bool(routine_full_added_events),
+            "tone": "positive" if full_routine_count > 0 else "neutral",
         },
         {
             "id": "routine_single_orders",
             "label": "Solo un producto",
-            "value": float(single_product_orders),
-            "display_value": str(single_product_orders),
-            "helper": "Pedidos donde solo entro el producto principal de una rutina.",
-            "is_estimated": True,
+            "value": float(single_product_count),
+            "display_value": str(single_product_count),
+            "helper": (
+                "Clicks reales en Continuar solo con este producto."
+                if routine_single_added_events
+                else "Pedidos donde solo entro el producto principal de una rutina."
+            ),
+            "is_estimated": not bool(routine_single_added_events),
             "tone": "neutral",
         },
         {
@@ -2166,13 +2329,13 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
         {
             "id": "routine_top",
             "question": "Que rutina termina vendiendo mas?",
-            "answer": routine_counter.most_common(1)[0][0] if routine_counter else "Todavia no hay una rutina con masa critica",
+            "answer": ranked_routines.most_common(1)[0][0] if ranked_routines else "Todavia no hay una rutina con masa critica",
             "detail": (
-                f"{routine_counter.most_common(1)[0][1]} pedido(s) atribuidos."
-                if routine_counter
+                f"{ranked_routines.most_common(1)[0][1]} evento(s) o pedido(s) atribuidos."
+                if ranked_routines
                 else "La atribucion se infiere por coincidencia de pasos comprados."
             ),
-            "tone": "positive" if routine_counter else "warning",
+            "tone": "positive" if ranked_routines else "warning",
         },
         {
             "id": "routine_value",
@@ -2192,17 +2355,29 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
         {
             "id": "routine_measurement",
             "question": "Que parte falta medir mejor?",
-            "answer": "Aun no existe telemetria persistida de aperturas o agregado de rutina completa.",
-            "detail": "Hoy la lectura se apoya en pedidos atribuidos a secuencias de rutina, no en clics previos.",
-            "tone": "warning",
+            "answer": (
+                "Ya hay telemetria de aperturas y decisiones dentro del modal."
+                if routine_opened_events or routine_full_added_events or routine_single_added_events
+                else "Aun no existe telemetria persistida de aperturas o agregado de rutina completa."
+            ),
+            "detail": (
+                "El lift en ticket sigue apoyandose en pedidos atribuidos para medir valor posterior."
+                if routine_opened_events or routine_full_added_events or routine_single_added_events
+                else "Hoy la lectura se apoya en pedidos atribuidos a secuencias de rutina, no en clics previos."
+            ),
+            "tone": "neutral" if routine_opened_events or routine_full_added_events or routine_single_added_events else "warning",
         },
     ]
 
     return {
         "metrics": metrics,
         "answers": answers,
-        "routines": _counter_to_ranked_items(routine_counter, total=max(full_routine_orders, 1)),
-        "measurement_note": "Routine Builder se interpreta con atribucion por pedidos, no con aperturas del modal.",
+        "routines": _counter_to_ranked_items(ranked_routines, total=max(full_routine_count, 1)),
+        "measurement_note": (
+            "Routine Builder ya usa aperturas y decisiones reales dentro del modal; el valor economico sigue apoyandose en pedidos atribuidos."
+            if routine_opened_events or routine_full_added_events or routine_single_added_events
+            else "Routine Builder se interpreta con atribucion por pedidos, no con aperturas del modal."
+        ),
         "full_routine_orders": full_routine_orders,
         "single_product_orders": single_product_orders,
     }
@@ -2211,6 +2386,7 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
 def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict[str, Any]]:
     bundle = context["bundle"]
     product_scores = context["product_scores"]
+    analytics_events = bundle["analytics_events"]
     items_by_order_id: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for item in bundle["order_items"]:
         items_by_order_id[int(item["order_id"])].append(item)
@@ -2262,12 +2438,22 @@ def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict
     biggest_drop = min(drop_candidates, key=lambda item: (item[0], item[1]), default=None)
 
     product_view_events = Counter()
-    for event in bundle["crm_events"]:
-        if str(event.get("event_type")) != "product_view":
-            continue
-        payload = event.get("payload_json") or {}
-        product_name = str(payload.get("product_name") or payload.get("productName") or "Producto")
-        product_view_events[product_name] += 1
+    analytics_product_views = [event for event in analytics_events if _get_analytics_event_name(event) == "product_viewed"]
+    if analytics_product_views:
+        for event in analytics_product_views:
+            metadata = _get_analytics_event_metadata(event)
+            product_name = str(metadata.get("product_name") or "").strip()
+            if not product_name:
+                product_id = int(event.get("product_id") or 0)
+                product_name = str(product_by_id.get(product_id, {}).get("name") or "Producto")
+            product_view_events[product_name] += 1
+    else:
+        for event in bundle["crm_events"]:
+            if str(event.get("event_type")) != "product_view":
+                continue
+            payload = event.get("payload_json") or {}
+            product_name = str(payload.get("product_name") or payload.get("productName") or "Producto")
+            product_view_events[product_name] += 1
 
     non_realized_product_counter = Counter()
     for order in bundle["orders"]:
@@ -2480,6 +2666,7 @@ def _build_marketing_analysis(context: dict[str, Any], now: datetime) -> dict[st
     bundle = context["bundle"]
     profiles = context["profiles"]
     realized_orders = context["realized_orders"]
+    analytics_events = bundle["analytics_events"]
     by_email, by_phone = _build_profile_identity_maps(profiles)
 
     coupon_by_id = {int(coupon["id"]): coupon for coupon in bundle["coupons"]}
@@ -2500,7 +2687,29 @@ def _build_marketing_analysis(context: dict[str, Any], now: datetime) -> dict[st
             lead_by_identity[identity] = lead
 
     source_counter: Counter[str] = Counter()
+    session_events = _group_analytics_events_by_session(analytics_events)
+    checkout_events_by_order_id: dict[int, dict[str, Any]] = {}
+    for event in analytics_events:
+        if _get_analytics_event_name(event) != "checkout_completed":
+            continue
+        order_id = int(event.get("order_id") or 0)
+        if order_id <= 0:
+            continue
+        current = checkout_events_by_order_id.get(order_id)
+        if current is None or (event.get("created_at") or now) > (current.get("created_at") or now):
+            checkout_events_by_order_id[order_id] = event
+
     for order in realized_orders:
+        checkout_event = checkout_events_by_order_id.get(int(order["id"]))
+        if checkout_event:
+            session_id = str(checkout_event.get("session_id") or "").strip()
+            source_counter[
+                _classify_analytics_session_origin(
+                    session_events.get(session_id, [checkout_event]) if session_id else [checkout_event]
+                )
+            ] += 1
+            continue
+
         profile = _find_profile_for_identity(
             email=order.get("customer_email"),
             phone=order.get("customer_phone"),
@@ -2538,7 +2747,11 @@ def _build_marketing_analysis(context: dict[str, Any], now: datetime) -> dict[st
             "id": "marketing_origin",
             "question": "De donde vienen las compras?",
             "answer": f"El origen dominante hoy es {top_source.lower()}.",
-            "detail": "El origen se infiere con señales persistidas de lead, contacto y orden.",
+            "detail": (
+                "La lectura prioriza source, path y search_submitted persistidos por sesion."
+                if checkout_events_by_order_id
+                else "El origen se infiere con senales persistidas de lead, contacto y orden."
+            ),
             "tone": "neutral",
         },
     ]
@@ -2553,26 +2766,83 @@ def _build_marketing_analysis(context: dict[str, Any], now: datetime) -> dict[st
 def _build_funnel_analysis(context: dict[str, Any]) -> dict[str, Any]:
     bundle = context["bundle"]
     realized_orders = context["realized_orders"]
-    skin_quiz_completed = len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "skin_quiz_completed"]) or len(bundle["skin_quiz_leads"])
+    analytics_events = bundle["analytics_events"]
+    analytics_counter = Counter(_get_analytics_event_name(event) for event in analytics_events)
+
+    analytics_site_visits = analytics_counter.get("site_visit", 0)
+    analytics_skin_quiz_started = analytics_counter.get("skin_quiz_started", 0)
+    analytics_skin_quiz_completed = analytics_counter.get("skin_quiz_completed", 0)
+    analytics_product_views = analytics_counter.get("product_viewed", 0)
+    analytics_routine_builder_opened = analytics_counter.get("routine_builder_opened", 0)
+    analytics_cart_views = analytics_counter.get("cart_viewed", 0)
+    analytics_checkout_started = analytics_counter.get("checkout_started", 0)
+    analytics_checkout_completed = analytics_counter.get("checkout_completed", 0)
+
+    skin_quiz_completed = (
+        analytics_skin_quiz_completed
+        or len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "skin_quiz_completed"])
+        or len(bundle["skin_quiz_leads"])
+    )
     routine_orders = 0
     for recommendation in _build_routine_builder_analysis(context)["routines"]:
         routine_orders += int(recommendation["count"])
-    checkout_count = len(bundle["orders"])
-    purchase_count = len(realized_orders)
+
+    checkout_count = analytics_checkout_started or len(bundle["orders"])
+    purchase_count = analytics_checkout_completed or len(realized_orders)
 
     product_view_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "product_view"])
     add_to_cart_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "add_to_cart"])
     visits_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) in {"page_view", "session_started", "home_view"}])
 
     raw_steps = [
-        ("visits", "Visitas", visits_count if visits_count > 0 else None, "measured" if visits_count > 0 else "unavailable"),
-        ("skin_quiz", "Skin Quiz", skin_quiz_completed if skin_quiz_completed > 0 else None, "measured" if skin_quiz_completed > 0 else "unavailable"),
-        ("routine", "Rutina", routine_orders if routine_orders > 0 else None, "proxy" if routine_orders > 0 else "unavailable"),
-        ("product", "Producto", product_view_count if product_view_count > 0 else None, "measured" if product_view_count > 0 else "unavailable"),
-        ("routine_builder", "Routine Builder", routine_orders if routine_orders > 0 else None, "proxy" if routine_orders > 0 else "unavailable"),
-        ("cart", "Carrito", add_to_cart_count if add_to_cart_count > 0 else None, "measured" if add_to_cart_count > 0 else "unavailable"),
-        ("checkout", "Checkout", checkout_count if checkout_count > 0 else None, "measured"),
-        ("purchase", "Compra", purchase_count if purchase_count > 0 else None, "measured" if purchase_count > 0 else "unavailable"),
+        (
+            "visits",
+            "Visitas",
+            analytics_site_visits if analytics_site_visits > 0 else visits_count if visits_count > 0 else None,
+            "measured" if analytics_site_visits > 0 else "proxy" if visits_count > 0 else "unavailable",
+        ),
+        (
+            "skin_quiz",
+            "Skin Quiz",
+            analytics_skin_quiz_started if analytics_skin_quiz_started > 0 else skin_quiz_completed if skin_quiz_completed > 0 else None,
+            "measured" if analytics_skin_quiz_started > 0 else "proxy" if skin_quiz_completed > 0 else "unavailable",
+        ),
+        (
+            "routine",
+            "Rutina",
+            analytics_skin_quiz_completed if analytics_skin_quiz_completed > 0 else routine_orders if routine_orders > 0 else None,
+            "measured" if analytics_skin_quiz_completed > 0 else "proxy" if routine_orders > 0 else "unavailable",
+        ),
+        (
+            "product",
+            "Producto",
+            analytics_product_views if analytics_product_views > 0 else product_view_count if product_view_count > 0 else None,
+            "measured" if analytics_product_views > 0 else "proxy" if product_view_count > 0 else "unavailable",
+        ),
+        (
+            "routine_builder",
+            "Routine Builder",
+            analytics_routine_builder_opened if analytics_routine_builder_opened > 0 else routine_orders if routine_orders > 0 else None,
+            "measured" if analytics_routine_builder_opened > 0 else "proxy" if routine_orders > 0 else "unavailable",
+        ),
+        (
+            "cart",
+            "Carrito",
+            analytics_cart_views if analytics_cart_views > 0 else add_to_cart_count if add_to_cart_count > 0 else None,
+            "measured" if analytics_cart_views > 0 else "proxy" if add_to_cart_count > 0 else "unavailable",
+        ),
+        (
+            "checkout",
+            "Checkout",
+            checkout_count if checkout_count > 0 else None,
+            "measured" if analytics_checkout_started > 0 else "proxy" if len(bundle["orders"]) > 0 else "unavailable",
+        ),
+        (
+            "purchase",
+            "Compra",
+            purchase_count if purchase_count > 0 else None,
+            "measured" if analytics_checkout_completed > 0 or len(realized_orders) > 0 else "unavailable",
+        ),
     ]
 
     steps: list[dict[str, Any]] = []
@@ -2604,18 +2874,23 @@ def _build_funnel_analysis(context: dict[str, Any]) -> dict[str, Any]:
             else "Todavia no hay checkouts persistidos para medir cierre."
         ),
         (
-            f"Skin Quiz a rutina atribuida: {_format_percent_precise((routine_orders / skin_quiz_completed) * 100)}."
+            f"Skin Quiz terminado a Routine Builder abierto: {_format_percent_precise((analytics_routine_builder_opened / analytics_skin_quiz_completed) * 100)}."
+            if analytics_skin_quiz_completed > 0 and analytics_routine_builder_opened > 0
+            else f"Skin Quiz a rutina atribuida: {_format_percent_precise((routine_orders / skin_quiz_completed) * 100)}."
             if skin_quiz_completed > 0 and routine_orders > 0
             else "La capa media del embudo todavia depende de proxies, no de eventos completos."
         ),
-        "Las etapas de visitas, producto y carrito se llenaran automaticamente cuando esos eventos se persistan en backend.",
+        (
+            "Visitas, producto, Routine Builder y carrito ya estan entrando por analytics_events."
+            if analytics_site_visits > 0 or analytics_product_views > 0 or analytics_routine_builder_opened > 0 or analytics_cart_views > 0
+            else "Las etapas de visitas, producto y carrito se llenaran automaticamente cuando esos eventos se persistan en backend."
+        ),
     ]
 
     return {
         "steps": steps,
         "insights": funnel_insights,
     }
-
 
 def _build_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
     skin_quiz = _build_skin_quiz_analysis(context, now)
@@ -2627,7 +2902,7 @@ def _build_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
     measurement_notes = [
         skin_quiz["measurement_note"],
         routine_builder["measurement_note"],
-        "Origen de compra, embudo medio y abandono usan senales persistidas o proxies; no se fabrican datos inexistentes.",
+        "Origen de compra, embudo medio y abandono usan analytics_events cuando existen y proxies honestos cuando aun faltan eventos.",
     ]
 
     return {
@@ -2869,3 +3144,4 @@ def ask_admin_intelligence_question(db: Session, question: str) -> dict[str, Any
         "suggested_actions": suggested_actions,
         "suggested_questions": _INTELLIGENCE_SUGGESTED_QUESTIONS,
     }
+

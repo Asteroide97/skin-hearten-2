@@ -9,6 +9,7 @@ import type { UseFormRegisterReturn } from "react-hook-form";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { StarIcon } from "@/components/shared/icons";
+import { trackEvent } from "@/lib/analytics";
 import { formatLongDate } from "@/lib/format";
 import type { ProductReviewCreateInput, ProductReviewSummary } from "@/lib/product-reviews";
 import { productReviewSchema, type ProductReviewFormValues } from "@/schemas/product-review";
@@ -95,6 +96,13 @@ export function ProductReviewsSection({
         kind: "success",
         message: "Gracias, tu resena sera revisada antes de publicarse.",
       });
+      trackEvent("review_submitted", {
+        product_id: productRef,
+        product_name: productName,
+        rating: values.rating,
+        source: "product",
+        verified: false,
+      });
     } catch {
       setNotice({
         kind: "error",
@@ -144,6 +152,13 @@ export function ProductReviewsSection({
                   <button
                     className="btn-ghost"
                     onClick={() => {
+                      if (!isFormVisible) {
+                        trackEvent("review_started", {
+                          product_id: productRef,
+                          product_name: productName,
+                          source: "product",
+                        });
+                      }
                       setIsFormVisible((current) => !current);
                     }}
                     type="button"
@@ -164,6 +179,11 @@ export function ProductReviewsSection({
                   <button
                     className="btn-primary"
                     onClick={() => {
+                      trackEvent("review_started", {
+                        product_id: productRef,
+                        product_name: productName,
+                        source: "product",
+                      });
                       setIsFormVisible(true);
                     }}
                     type="button"
@@ -233,6 +253,13 @@ export function ProductReviewsSection({
               <button
                 className="btn-secondary"
                 onClick={() => {
+                  if (!isFormVisible) {
+                    trackEvent("review_started", {
+                      product_id: productRef,
+                      product_name: productName,
+                      source: "product",
+                    });
+                  }
                   setIsFormVisible((current) => !current);
                 }}
                 type="button"

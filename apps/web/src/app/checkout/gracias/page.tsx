@@ -3,8 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { SkinRoutineBanner } from "@/components/quiz/skin-routine-banner";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { readLastCheckoutOrder, type StoredCheckoutOrder } from "@/lib/checkout";
+import {
+  hasCheckoutSuccessBeenTracked,
+  markCheckoutSuccessTracked,
+  readLastCheckoutOrder,
+  type StoredCheckoutOrder,
+} from "@/lib/checkout";
+import { trackEvent } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/format";
 
 const whatsappHref =
@@ -14,7 +21,23 @@ export default function CheckoutThankYouPage() {
   const [order, setOrder] = useState<StoredCheckoutOrder | null>(null);
 
   useEffect(() => {
-    setOrder(readLastCheckoutOrder());
+    const latestOrder = readLastCheckoutOrder();
+    setOrder(latestOrder);
+
+    if (!latestOrder || hasCheckoutSuccessBeenTracked(latestOrder.orderId)) {
+      return;
+    }
+
+    trackEvent("checkout_completed", {
+      cart_total: latestOrder.total,
+      item_count: 0,
+      order_id: latestOrder.orderId,
+      order_number: latestOrder.orderNumber,
+      payment_method:
+        latestOrder.nextAction.type === "redirect" ? latestOrder.nextAction.provider : "mock",
+      payment_status: latestOrder.paymentStatus,
+    });
+    markCheckoutSuccessTracked(latestOrder.orderId);
   }, []);
 
   return (
@@ -24,6 +47,8 @@ export default function CheckoutThankYouPage() {
         title="Recibimos tu pedido"
         description="Guardamos el resumen mas reciente para que puedas revisar numero, total y estado desde esta pantalla."
       />
+
+      <SkinRoutineBanner context="thankyou" />
 
       {order ? (
         <section className="soft-panel rounded-[2rem] p-6 sm:p-8">
@@ -85,7 +110,7 @@ export default function CheckoutThankYouPage() {
               className="inline-flex items-center justify-center rounded-full border border-stone-300 px-5 py-3 text-sm font-medium text-stone-800"
               href="/productos"
             >
-              Volver a tienda
+              Volver a la seleccion
             </Link>
           </div>
         </section>
@@ -93,16 +118,40 @@ export default function CheckoutThankYouPage() {
         <section className="soft-panel rounded-[2rem] p-8 text-center">
           <h2 className="font-serif text-3xl text-stone-900">No encontramos un pedido reciente</h2>
           <p className="mt-3 text-sm leading-7 text-stone-600">
-            Completa el checkout desde la tienda o vuelve a tu catalogo para iniciar una compra.
+            Completa el checkout cuando tu rutina este lista o vuelve a la seleccion para empezar de nuevo.
           </p>
           <Link
             className="mt-6 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-medium text-white"
             href="/productos"
           >
-            Ir al catalogo
+            Ir a la seleccion
           </Link>
         </section>
       )}
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <article className="rounded-[1.8rem] bg-[#f7efe7] p-5 sm:p-6">
+          <p className="section-label">Como aplicarla</p>
+          <h2 className="mt-3 font-serif text-[2rem] leading-[0.98] text-stone-950">Manana y noche, sin prisa.</h2>
+          <p className="mt-4 text-sm leading-7 text-stone-600">
+            Empieza por limpiador, sigue con tratamiento o serum, sella con hidratante y no olvides el protector solar por la manana.
+          </p>
+        </article>
+        <article className="rounded-[1.8rem] bg-[#fbf4ec] p-5 sm:p-6">
+          <p className="section-label">Que esperar</p>
+          <h2 className="mt-3 font-serif text-[2rem] leading-[0.98] text-stone-950">Primero constancia, luego cambio visible.</h2>
+          <p className="mt-4 text-sm leading-7 text-stone-600">
+            Las primeras semanas suelen sentirse en textura y confort. Los cambios de tono, firmeza o brotes se sostienen con uso continuo.
+          </p>
+        </article>
+        <article className="rounded-[1.8rem] bg-[#eef2ed] p-5 sm:p-6">
+          <p className="section-label">Siguiente compra</p>
+          <h2 className="mt-3 font-serif text-[2rem] leading-[0.98] text-stone-950">Tu rutina se repone, no se improvisa.</h2>
+          <p className="mt-4 text-sm leading-7 text-stone-600">
+            Cuando notes que tu hidratante o tratamiento baja, vuelve a tu seleccion guardada para reponer sin empezar de cero.
+          </p>
+        </article>
+      </section>
     </div>
   );
 }

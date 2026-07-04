@@ -197,9 +197,11 @@ export function SkinQuizModal({ catalogProducts }: SkinQuizModalProps) {
     setResult(nextResult);
     setRoutineAdded(false);
     trackEvent("skin_quiz_completed", {
+      age_range: nextResult.answers.ageRange,
       goal: nextResult.answers.goal,
       recommended_product_ids: nextResult.recommendedProductIds,
       skin_type: nextResult.answers.skinType,
+      source,
     });
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -41,6 +41,17 @@ export function CheckoutForm() {
   const shipping = getCartShipping(subtotal, coupon);
   const total = getCartTotal(subtotal, discount, shipping);
   const itemCount = getCartItemCount(items);
+
+  useEffect(() => {
+    if (items.length === 0) {
+      return;
+    }
+
+    trackEvent("checkout_started", {
+      cart_total: total,
+      item_count: itemCount,
+    });
+  }, [itemCount, items.length, total]);
 
   const form = useForm<CheckoutValues>({
     resolver: zodResolver(checkoutSchema),
