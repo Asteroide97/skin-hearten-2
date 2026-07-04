@@ -106,6 +106,89 @@ class IntelligenceAiModuleRead(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class IntelligenceStatRead(BaseModel):
+    id: str
+    label: str
+    value: float | None = None
+    display_value: str = Field(serialization_alias="displayValue")
+    helper: str | None = None
+    is_estimated: bool = Field(default=False, serialization_alias="isEstimated")
+    tone: InsightTone = "neutral"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class IntelligenceNarrativeBlockRead(BaseModel):
+    id: str
+    label: str
+    headline: str
+    details: list[str]
+    tone: InsightTone = "neutral"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class IntelligenceQuestionAnswerRead(BaseModel):
+    id: str
+    question: str
+    answer: str
+    detail: str | None = None
+    tone: InsightTone = "neutral"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class IntelligenceRankedItemRead(BaseModel):
+    label: str
+    count: int
+    share: float | None = None
+    helper: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class IntelligenceFunnelStepRead(BaseModel):
+    id: str
+    label: str
+    count: int | None = None
+    display_value: str = Field(serialization_alias="displayValue")
+    conversion_from_previous: float | None = Field(default=None, serialization_alias="conversionFromPrevious")
+    loss_from_previous: int | None = Field(default=None, serialization_alias="lossFromPrevious")
+    measurement: Literal["measured", "proxy", "unavailable"] = "measured"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class IntelligenceAnalysisRead(BaseModel):
+    executive_periods: list[IntelligenceNarrativeBlockRead] = Field(serialization_alias="executivePeriods")
+    skin_quiz_metrics: list[IntelligenceStatRead] = Field(serialization_alias="skinQuizMetrics")
+    skin_quiz_answers: list[IntelligenceQuestionAnswerRead] = Field(serialization_alias="skinQuizAnswers")
+    skin_quiz_recommended_products: list[IntelligenceRankedItemRead] = Field(
+        serialization_alias="skinQuizRecommendedProducts"
+    )
+    skin_quiz_purchased_products: list[IntelligenceRankedItemRead] = Field(
+        serialization_alias="skinQuizPurchasedProducts"
+    )
+    routine_builder_metrics: list[IntelligenceStatRead] = Field(serialization_alias="routineBuilderMetrics")
+    routine_builder_answers: list[IntelligenceQuestionAnswerRead] = Field(
+        serialization_alias="routineBuilderAnswers"
+    )
+    routine_builder_routines: list[IntelligenceRankedItemRead] = Field(
+        serialization_alias="routineBuilderRoutines"
+    )
+    product_answers: list[IntelligenceQuestionAnswerRead] = Field(serialization_alias="productAnswers")
+    customer_answers: list[IntelligenceQuestionAnswerRead] = Field(serialization_alias="customerAnswers")
+    priority_customers: list[IntelligenceCustomerScoreRead] = Field(serialization_alias="priorityCustomers")
+    marketing_answers: list[IntelligenceQuestionAnswerRead] = Field(serialization_alias="marketingAnswers")
+    marketing_sources: list[IntelligenceRankedItemRead] = Field(serialization_alias="marketingSources")
+    marketing_coupons: list[IntelligenceRankedItemRead] = Field(serialization_alias="marketingCoupons")
+    funnel_steps: list[IntelligenceFunnelStepRead] = Field(serialization_alias="funnelSteps")
+    funnel_insights: list[str] = Field(serialization_alias="funnelInsights")
+    measurement_notes: list[str] = Field(serialization_alias="measurementNotes")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class IntelligenceDashboardRead(BaseModel):
     generated_at: datetime = Field(serialization_alias="generatedAt")
     executive_summary: IntelligenceExecutiveSummaryRead = Field(serialization_alias="executiveSummary")
@@ -115,6 +198,7 @@ class IntelligenceDashboardRead(BaseModel):
     customer_scores: list[IntelligenceCustomerScoreRead] = Field(serialization_alias="customerScores")
     product_scores: list[IntelligenceProductScoreRead] = Field(serialization_alias="productScores")
     ai_module: IntelligenceAiModuleRead = Field(serialization_alias="aiModule")
+    analysis: IntelligenceAnalysisRead
 
     model_config = ConfigDict(populate_by_name=True)
 

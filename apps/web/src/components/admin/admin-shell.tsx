@@ -8,7 +8,8 @@ import { ADMIN_LOGIN_PATH } from "@/lib/admin-session";
 
 const sections = [
   { href: "/admin", label: "Dashboard" },
-  { href: "/admin/intelligence", label: "Centro de Inteligencia" },
+  { href: "/admin/intelligence", label: "Centro de Inteligencia", matchStartsWith: "/admin/intelligence" },
+  { href: "/admin/intelligence/analytics", label: "Analisis" },
   { href: "/admin/productos", label: "Productos" },
   { href: "/admin/rutinas", label: "Rutinas" },
   { href: "/admin/cupones", label: "Cupones" },
@@ -36,6 +37,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (pathname === ADMIN_LOGIN_PATH) {
     return <>{children}</>;
+  }
+
+  function isSectionActive(section: (typeof sections)[number]) {
+    if (pathname === section.href) {
+      return true;
+    }
+
+    if (section.matchStartsWith) {
+      return pathname.startsWith(section.matchStartsWith);
+    }
+
+    return false;
   }
 
   async function handleSignOut() {
@@ -80,7 +93,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
               <nav className="mt-5 space-y-1">
                 {sections.map((section) => {
-                  const isActive = pathname === section.href;
+                  const isActive = isSectionActive(section);
 
                   return (
                     <Link
@@ -158,7 +171,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
             <nav className="mt-5 space-y-1">
               {sections.map((section) => {
-                const isActive = pathname === section.href;
+                const isActive = isSectionActive(section);
 
                 return (
                   <Link

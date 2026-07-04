@@ -8,8 +8,12 @@ import {
   getIntelligenceScoreBandLabel,
   type IntelligenceAskResponse,
   type IntelligenceDashboard,
+  type IntelligenceFunnelStep,
   type IntelligenceKPI,
+  type IntelligenceQuestionAnswer,
+  type IntelligenceRankedItem,
   type IntelligenceRecommendation,
+  type IntelligenceStat,
 } from "@/lib/admin-intelligence";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 
@@ -32,7 +36,7 @@ const SOURCE_LINKS: Record<string, { href: string; label: string }> = {
 
 function getLoadMessage(reason: string | null) {
   if (!reason) {
-    return "Todavia no hay suficiente actividad para construir insights accionables. Cuando entren ventas, leads, CRM o inventario real, este centro empezara a priorizar decisiones.";
+    return "Todavia no hay suficiente actividad para construir una lectura ejecutiva util. Cuando entren ventas, pedidos, leads y CRM real, este modulo empezara a priorizar decisiones.";
   }
 
   if (reason === "api_url_missing") {
@@ -43,7 +47,7 @@ function getLoadMessage(reason: string | null) {
     return "Tu sesion de SuperAdmin no es valida o expiro. Vuelve a iniciar sesion.";
   }
 
-  return "No fue posible cargar los insights ahora mismo. El modulo queda aislado y no afecta el resto del panel.";
+  return "No fue posible cargar el Centro de Inteligencia ahora mismo. El resto del panel sigue aislado.";
 }
 
 function getToneClasses(tone: IntelligenceKPI["tone"]) {
@@ -74,18 +78,22 @@ function getPriorityClasses(priority: IntelligenceRecommendation["priority"]) {
   }
 }
 
-function getScoreClasses(score: number) {
-  if (score >= 80) {
-    return "border-[#d8e3cf] bg-[#f3faf0] text-[#476638]";
-  }
-  if (score >= 60) {
-    return "border-[#ead9c8] bg-[#fff8f3] text-stone-800";
-  }
-  return "border-[#ead0c7] bg-[#fff6f2] text-[#8a4d3b]";
-}
-
 function getSourceLink(source: string) {
   return SOURCE_LINKS[source] ?? { href: "/admin", label: "Abrir admin" };
+}
+
+function getPriorityStars(priority: IntelligenceRecommendation["priority"]) {
+  switch (priority) {
+    case "critical":
+      return "★★★★★";
+    case "high":
+      return "★★★★☆";
+    case "medium":
+      return "★★★☆☆";
+    case "low":
+    default:
+      return "★★☆☆☆";
+  }
 }
 
 export function IntelligencePage() {
@@ -140,8 +148,7 @@ export function IntelligencePage() {
     };
   }, []);
 
-  const topCustomer = useMemo(() => dashboard?.customerScores[0] ?? null, [dashboard]);
-  const topProduct = useMemo(() => dashboard?.productScores[0] ?? null, [dashboard]);
+  const topCustomer = useMemo(() => dashboard?.analysis.priorityCustomers[0] ?? null, [dashboard]);
 
   async function submitQuestion(nextQuestion?: string) {
     const value = (nextQuestion ?? question).trim();
@@ -184,10 +191,10 @@ export function IntelligencePage() {
           <div className="max-w-4xl">
             <p className="section-label">Centro de Inteligencia</p>
             <h1 className="mt-2 font-serif text-[2.8rem] leading-[0.94] text-stone-950 sm:text-[3.5rem]">
-              Skin Hearten Intelligence
+              Analisis para decidir mejor
             </h1>
             <p className="mt-3 text-sm leading-6 text-stone-600">
-              Decision support para ventas, CRM, Skin Quiz, cupones, recordatorios e inventario. La vista inicial prioriza que hacer hoy, no solo que paso.
+              No muestra graficas por rutina. Responde preguntas de negocio con ventas, CRM, Skin Quiz, cupones, inventario y ordenes reales.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -203,170 +210,302 @@ export function IntelligencePage() {
       {isLoading ? (
         <section className="admin-panel p-4 sm:p-5">
           <div className="space-y-4 animate-pulse">
-            <div className="h-5 w-52 rounded-full bg-stone-200" />
-            <div className="grid gap-4 xl:grid-cols-[1.15fr_380px]">
-              <div className="space-y-4">
-                <div className="h-40 rounded-[1.3rem] bg-white" />
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <div className="h-24 rounded-[1.2rem] bg-white" key={index} />
-                  ))}
-                </div>
-              </div>
-              <div className="h-72 rounded-[1.3rem] bg-white" />
+            <div className="h-6 w-52 rounded-full bg-stone-200" />
+            <div className="grid gap-4 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div className="h-40 rounded-[1.4rem] bg-white" key={`intelligence-loading-${index}`} />
+              ))}
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="h-72 rounded-[1.4rem] bg-white" />
+              <div className="h-72 rounded-[1.4rem] bg-white" />
             </div>
           </div>
         </section>
       ) : dashboard ? (
         <>
-          <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.18fr)_380px]">
-            <div className="space-y-5">
-              <section className="admin-panel p-4 sm:p-5">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_320px]">
-                  <article className="rounded-[1.4rem] border border-stone-200 bg-white p-5">
-                    <p className="section-label">Resumen ejecutivo</p>
-                    <h2 className="mt-2 font-serif text-2xl text-stone-950 sm:text-[2rem]">
-                      {dashboard.executiveSummary.headline}
-                    </h2>
-                    <p className="mt-3 text-sm leading-7 text-stone-700">{dashboard.executiveSummary.summary}</p>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {dashboard.executiveSummary.bullets.map((bullet) => (
-                        <div
-                          className="rounded-[1.1rem] border border-stone-200 bg-[#fff8f3] px-4 py-3 text-sm leading-6 text-stone-700"
-                          key={bullet}
-                        >
-                          {bullet}
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-
-                  <article className="rounded-[1.4rem] border border-stone-200 bg-[#fcfaf7] p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="section-label">Pulso inmediato</p>
-                        <p className="mt-2 text-sm font-semibold text-stone-900">Lecturas que requieren atencion</p>
-                      </div>
-                      <MetricPill label="Top clienta" value={topCustomer ? topCustomer.name : "Sin dato"} />
-                    </div>
-                    <div className="mt-4 space-y-3">
-                      {dashboard.kpis.slice(0, 3).map((kpi) => (
-                        <div className={`rounded-[1.1rem] border px-4 py-3 ${getToneClasses(kpi.tone)}`} key={kpi.id}>
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-75">
-                                {kpi.label}
-                              </p>
-                              <p className="mt-2 text-xl font-semibold">{kpi.displayValue}</p>
-                            </div>
-                            <span className="rounded-full bg-white/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
-                              {kpi.tone}
-                            </span>
-                          </div>
-                          {kpi.helper ? <p className="mt-2 text-sm leading-6 opacity-80">{kpi.helper}</p> : null}
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {dashboard.kpis.slice(3).map((kpi) => (
-                    <KpiCard key={kpi.id} kpi={kpi} />
-                  ))}
-                </div>
-              </section>
-
-              <section className="admin-panel p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="section-label">Motor de insights</p>
-                    <h2 className="mt-2 font-serif text-2xl text-stone-950">Lecturas por fuente</h2>
-                  </div>
-                  <MetricPill label="Fuentes" value={String(dashboard.snapshots.length)} />
-                </div>
-
-                <div className="mt-4 grid gap-3 xl:grid-cols-3">
-                  {dashboard.snapshots.map((snapshot) => (
-                    <article className="rounded-[1.3rem] border border-stone-200 bg-white p-4" key={snapshot.id}>
-                      <p className="text-xs font-semibold tracking-[0.08em] text-stone-500">
-                        {snapshot.title}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold leading-6 text-stone-900">{snapshot.headline}</p>
-                      <div className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
-                        {snapshot.details.map((detail) => (
-                          <p key={detail}>{detail}</p>
-                        ))}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </div>
-
-            <div className="space-y-5">
-              <section className="admin-panel p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="section-label">
-                      Recomendaciones automaticas
-                    </p>
-                    <h2 className="mt-2 font-serif text-2xl text-stone-950">Prioridades hoy</h2>
-                  </div>
-                  <MetricPill label="Items" value={String(dashboard.recommendations.length)} />
-                </div>
-
-                <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto pr-1">
-                  {dashboard.recommendations.map((recommendation) => (
-                    <article
-                      className="rounded-[1.3rem] border border-stone-200 bg-white p-4"
-                      key={recommendation.id}
+          <section className="admin-panel p-4 sm:p-5">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_340px]">
+              <article className="rounded-[1.5rem] border border-stone-200 bg-white p-5">
+                <p className="section-label">Resumen ejecutivo</p>
+                <h2 className="mt-2 font-serif text-2xl text-stone-950 sm:text-[2rem]">
+                  {dashboard.executiveSummary.headline}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-stone-700">{dashboard.executiveSummary.summary}</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {dashboard.executiveSummary.bullets.map((bullet) => (
+                    <div
+                      className="rounded-[1.1rem] border border-stone-200 bg-[#fff8f3] px-4 py-3 text-sm leading-6 text-stone-700"
+                      key={bullet}
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                            {recommendation.impactLabel}
-                          </p>
-                          <h3 className="mt-1 text-sm font-semibold leading-6 text-stone-900">
-                            {recommendation.title}
-                          </h3>
-                        </div>
-                        <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${getPriorityClasses(recommendation.priority)}`}
-                        >
-                          {getIntelligencePriorityLabel(recommendation.priority)}
-                        </span>
-                      </div>
-
-                      <p className="mt-3 text-sm leading-6 text-stone-700">{recommendation.description}</p>
-
-                      <div className="mt-3 grid gap-3">
-                        <MetaPill label="Impacto" value={recommendation.impactValue} />
-                        <MetaPill label="Siguiente paso" value={recommendation.suggestedAction} />
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-stone-500">
-                          Fuente: {recommendation.source.replaceAll("_", " ")}
-                        </span>
-                        <Link
-                          className="rounded-full border border-stone-300 bg-white px-3 py-2 text-[11px] font-semibold text-stone-800 transition hover:border-stone-500"
-                          href={getSourceLink(recommendation.source).href}
-                        >
-                          {getSourceLink(recommendation.source).label}
-                        </Link>
-                      </div>
-                    </article>
+                      {bullet}
+                    </div>
                   ))}
                 </div>
-              </section>
+              </article>
 
-              <section className="soft-panel rounded-[1.5rem] p-4 sm:p-5">
+              <article className="soft-panel rounded-[1.5rem] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
+                  Prioridad comercial
+                </p>
+                <h2 className="mt-2 font-serif text-[2rem] leading-[0.98] text-stone-950">
+                  {topCustomer ? topCustomer.name : "Sin cliente priorizado"}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-stone-600">
+                  {topCustomer
+                    ? `${topCustomer.repurchaseScore}/100 de probabilidad de recompra con foco en ${topCustomer.mainGoal?.replaceAll("_", " ") ?? "rutina actual"}.`
+                    : "Cuando haya mas compras cobradas y CRM real, aqui aparecera la siguiente clienta a contactar."}
+                </p>
+                {topCustomer ? (
+                  <div className="mt-4 grid gap-3">
+                    <MetaPill label="Ticket promedio" value={formatCurrency(topCustomer.averageTicket)} />
+                    <MetaPill label="Estado" value={getIntelligenceScoreBandLabel(topCustomer.scoreBand)} />
+                    <MetaPill
+                      label="Canal"
+                      value={topCustomer.whatsapp ?? topCustomer.email ?? "Sin canal disponible"}
+                    />
+                  </div>
+                ) : null}
+              </article>
+            </div>
+          </section>
+
+          <section className="admin-panel p-4 sm:p-5">
+            <SectionHeader
+              eyebrow="Business Intelligence"
+              title="Resumen ejecutivo"
+              description="Hoy, esta semana y este mes resumidos como lectura operativa."
+            />
+            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+              {dashboard.analysis.executivePeriods.map((period) => (
+                <article
+                  className={`rounded-[1.4rem] border p-5 ${getToneClasses(period.tone)}`}
+                  key={period.id}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-75">
+                    {period.label}
+                  </p>
+                  <h3 className="mt-3 text-lg font-semibold leading-7 text-current">{period.headline}</h3>
+                  <div className="mt-4 space-y-2 text-sm leading-6 opacity-85">
+                    {period.details.map((detail) => (
+                      <p key={detail}>{detail}</p>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-panel p-4 sm:p-5">
+            <SectionHeader
+              eyebrow="Skin Quiz Analytics"
+              title="Que revela el quiz sobre la demanda"
+              description="Lectura basada en quizzes persistidos, leads y compras relacionadas."
+            />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {dashboard.analysis.skinQuizMetrics.map((metric) => (
+                <StatCard key={metric.id} metric={metric} />
+              ))}
+            </div>
+            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              <QuestionGrid items={dashboard.analysis.skinQuizAnswers} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <RankedList
+                  emptyLabel="Todavia no hay suficientes recomendaciones persistidas."
+                  items={dashboard.analysis.skinQuizRecommendedProducts}
+                  title="Productos mas recomendados"
+                />
+                <RankedList
+                  emptyLabel="Todavia no hay suficientes compras ligadas al quiz."
+                  items={dashboard.analysis.skinQuizPurchasedProducts}
+                  title="Productos realmente comprados"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="admin-panel p-4 sm:p-5">
+            <SectionHeader
+              eyebrow="Routine Builder"
+              title="Lo que las rutinas ya estan moviendo"
+              description="Se interpreta con pedidos atribuidos a secuencias de rutina, no con clics sueltos."
+            />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {dashboard.analysis.routineBuilderMetrics.map((metric) => (
+                <StatCard key={metric.id} metric={metric} />
+              ))}
+            </div>
+            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_340px]">
+              <QuestionGrid items={dashboard.analysis.routineBuilderAnswers} />
+              <RankedList
+                emptyLabel="Todavia no hay una rutina dominante."
+                items={dashboard.analysis.routineBuilderRoutines}
+                title="Rutinas con mas salida"
+              />
+            </div>
+          </section>
+
+          <section className="admin-panel p-4 sm:p-5">
+            <SectionHeader
+              eyebrow="Productos"
+              title="Que producto necesita accion"
+              description="Cada respuesta apunta a una decision de catalogo, margen o conversion."
+            />
+            <QuestionGrid items={dashboard.analysis.productAnswers} />
+          </section>
+
+          <section className="admin-panel p-4 sm:p-5">
+            <SectionHeader
+              eyebrow="Clientes"
+              title="Que segmentos merecen atencion"
+              description="Nuevas, activas, VIP, en riesgo y listas para recompra."
+            />
+            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_360px]">
+              <QuestionGrid items={dashboard.analysis.customerAnswers} />
+              <article className="rounded-[1.4rem] border border-stone-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                      Prioridad hoy
+                    </p>
+                    <h3 className="mt-2 font-serif text-[1.8rem] text-stone-950">A quien contactar</h3>
+                  </div>
+                  <Link
+                    className="rounded-full border border-stone-300 bg-white px-3 py-2 text-[11px] font-semibold text-stone-800 transition hover:border-stone-500"
+                    href="/admin/crm"
+                  >
+                    Abrir CRM
+                  </Link>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {dashboard.analysis.priorityCustomers.length === 0 ? (
+                    <EmptyBlock message="Todavia no hay clientas con historial suficiente para priorizar recompra." />
+                  ) : (
+                    dashboard.analysis.priorityCustomers.map((customer) => (
+                      <div className="rounded-[1.2rem] border border-stone-200 bg-[#fcfaf7] px-4 py-4" key={`${customer.contactId ?? "c"}-${customer.customerId ?? "u"}-${customer.name}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-stone-900">{customer.name}</p>
+                            <p className="mt-1 text-xs text-stone-500">
+                              {customer.whatsapp ?? customer.email ?? "Sin canal"}
+                            </p>
+                          </div>
+                          <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-800">
+                            {customer.repurchaseScore}/100
+                          </span>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-stone-700">{customer.suggestedAction}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section className="admin-panel p-4 sm:p-5">
+            <SectionHeader
+              eyebrow="Marketing"
+              title="Cupones y origen de compra"
+              description="Se apoya en redenciones reales y en origen inferido con senales persistidas."
+            />
+            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              <QuestionGrid items={dashboard.analysis.marketingAnswers} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <RankedList
+                  emptyLabel="Todavia no hay origenes de compra suficientes."
+                  items={dashboard.analysis.marketingSources}
+                  title="Origen de compra"
+                />
+                <RankedList
+                  emptyLabel="Todavia no hay cupones con uso real."
+                  items={dashboard.analysis.marketingCoupons}
+                  title="Cupones con mejor salida"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="admin-panel p-4 sm:p-5">
+            <SectionHeader
+              eyebrow="Embudo"
+              title="Donde se pierde la conversion"
+              description="Muestra medicion real cuando existe y proxies honestos cuando aun no hay evento persistido."
+            />
+            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_340px]">
+              <div className="space-y-3">
+                {dashboard.analysis.funnelSteps.map((step) => (
+                  <FunnelStepCard key={step.id} step={step} />
+                ))}
+              </div>
+              <article className="rounded-[1.4rem] border border-stone-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                  Lectura del embudo
+                </p>
+                <div className="mt-3 space-y-3 text-sm leading-7 text-stone-700">
+                  {dashboard.analysis.funnelInsights.map((insight) => (
+                    <p key={insight}>{insight}</p>
+                  ))}
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section className="admin-panel p-4 sm:p-5">
+            <SectionHeader
+              eyebrow="Acciones sugeridas"
+              title="Que conviene hacer ahora"
+              description="La lista ya esta priorizada por riesgo, impacto y accion siguiente."
+            />
+            <div className="mt-4 space-y-3">
+              {dashboard.recommendations.map((recommendation) => (
+                <article
+                  className="rounded-[1.4rem] border border-stone-200 bg-white p-5"
+                  key={recommendation.id}
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="max-w-3xl">
+                      <p className="text-sm font-semibold tracking-[0.08em] text-stone-500">
+                        {getPriorityStars(recommendation.priority)}
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold leading-7 text-stone-950">
+                        {recommendation.title}
+                      </h3>
+                      <p className="mt-3 text-sm leading-7 text-stone-700">
+                        {recommendation.description}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${getPriorityClasses(recommendation.priority)}`}>
+                        {getIntelligencePriorityLabel(recommendation.priority)}
+                      </span>
+                      <span className="inline-flex rounded-full border border-stone-200 bg-[#fff8f3] px-3 py-1 text-[11px] font-semibold text-stone-700">
+                        Impacto {recommendation.impactValue}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+                    <MetaPill label="Siguiente paso" value={recommendation.suggestedAction} />
+                    <Link
+                      className="inline-flex items-center justify-center rounded-[1.1rem] border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition hover:border-stone-500"
+                      href={getSourceLink(recommendation.source).href}
+                    >
+                      {getSourceLink(recommendation.source).label}
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="soft-panel rounded-[1.5rem] p-4 sm:p-5">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
                   {dashboard.aiModule.title}
                 </p>
-                <h2 className="mt-2 font-serif text-2xl text-stone-950">Preguntale a Skin Hearten AI</h2>
-                <p className="mt-3 text-sm leading-6 text-stone-600">{dashboard.aiModule.description}</p>
+                <h2 className="mt-2 font-serif text-2xl text-stone-950">Preguntale a Skin Hearten</h2>
+                <p className="mt-3 text-sm leading-7 text-stone-600">{dashboard.aiModule.description}</p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {dashboard.aiModule.suggestedQuestions.map((suggestedQuestion) => (
@@ -390,12 +529,12 @@ export function IntelligencePage() {
                     onChange={(event) => {
                       setQuestion(event.target.value);
                     }}
-                    placeholder="Ejemplo: que deberia atacar primero hoy, recompra o inventario?"
+                    placeholder="Ejemplo: que producto deberia impulsar primero sin castigar margen?"
                     value={question}
                   />
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-xs text-stone-500">
-                      Arquitectura lista para OpenAI despues. Hoy responde con reglas y contexto real.
+                      La capa ya responde con reglas y datos persistidos. OpenAI queda como siguiente paso, no como requisito.
                     </p>
                     <button
                       className="rounded-full bg-stone-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
@@ -410,195 +549,54 @@ export function IntelligencePage() {
                   </div>
                   {askError ? <NoticeBanner kind="error" message={askError} /> : null}
                 </div>
+              </div>
 
-                <div className="mt-4">
-                  {answer ? (
-                    <div className="space-y-3">
-                      <div className="rounded-[1.2rem] border border-stone-200 bg-white px-4 py-4">
-                        <p className="text-sm leading-7 text-stone-800">{answer.answer}</p>
-                      </div>
-                      <div className="grid gap-3">
-                        <div className="rounded-[1.2rem] bg-[#fff8f3] px-4 py-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
-                            Hechos de soporte
-                          </p>
-                          <div className="mt-2 space-y-2 text-sm leading-6 text-stone-700">
-                            {answer.supportingFacts.map((fact) => (
-                              <p key={fact}>{fact}</p>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="rounded-[1.2rem] bg-[#f6faf5] px-4 py-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
-                            Siguientes pasos
-                          </p>
-                          <div className="mt-2 space-y-2 text-sm leading-6 text-stone-700">
-                            {answer.suggestedActions.map((action) => (
-                              <p key={action}>{action}</p>
-                            ))}
-                          </div>
-                        </div>
+              <div>
+                {answer ? (
+                  <div className="space-y-3">
+                    <div className="rounded-[1.2rem] border border-stone-200 bg-white px-4 py-4">
+                      <p className="text-sm leading-7 text-stone-800">{answer.answer}</p>
+                    </div>
+                    <div className="rounded-[1.2rem] bg-[#fff8f3] px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                        Hechos de soporte
+                      </p>
+                      <div className="mt-2 space-y-2 text-sm leading-6 text-stone-700">
+                        {answer.supportingFacts.map((fact) => (
+                          <p key={fact}>{fact}</p>
+                        ))}
                       </div>
                     </div>
-                  ) : (
-                    <EmptyBlock message="Escribe una pregunta o usa un prompt sugerido para obtener una recomendacion ejecutiva." />
-                  )}
-                </div>
-              </section>
+                    <div className="rounded-[1.2rem] bg-[#f6faf5] px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                        Siguientes pasos
+                      </p>
+                      <div className="mt-2 space-y-2 text-sm leading-6 text-stone-700">
+                        {answer.suggestedActions.map((action) => (
+                          <p key={action}>{action}</p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyBlock message="Escribe una pregunta o usa uno de los prompts sugeridos para obtener una recomendacion ejecutiva concreta." />
+                )}
+              </div>
             </div>
-          </div>
-
-          <div className="grid gap-5 xl:grid-cols-2">
-            <section className="soft-panel rounded-[1.5rem] p-4 sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Score de clienta</p>
-                  <h2 className="mt-2 font-serif text-2xl text-stone-950">Probabilidad de recompra</h2>
-                </div>
-                <Link
-                  className="rounded-full border border-stone-300 bg-white px-3 py-2 text-[11px] font-semibold text-stone-800 transition hover:border-stone-500"
-                  href="/admin/crm"
-                >
-                  Ir al CRM
-                </Link>
-              </div>
-
-              <div className="mt-4 overflow-hidden rounded-[1.3rem] border border-stone-200 bg-white">
-                <div className="max-h-[420px] overflow-auto">
-                  <table className="min-w-[920px] divide-y divide-stone-200 text-left">
-                    <thead className="bg-[#fff8f3] text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                      <tr>
-                        <th className="px-4 py-3">Cliente</th>
-                        <th className="px-4 py-3">Score</th>
-                        <th className="px-4 py-3">Ultima compra</th>
-                        <th className="px-4 py-3">Pedidos</th>
-                        <th className="px-4 py-3">Ticket</th>
-                        <th className="px-4 py-3">Objetivo</th>
-                        <th className="px-4 py-3">Accion</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100 text-sm text-stone-700">
-                      {dashboard.customerScores.map((customer) => (
-                        <tr className="align-top" key={`${customer.contactId ?? "contact"}-${customer.customerId ?? "customer"}-${customer.name}`}>
-                          <td className="px-4 py-3">
-                            <p className="font-semibold text-stone-900">{customer.name}</p>
-                            <p className="mt-1 text-xs text-stone-500">
-                              {customer.email ?? customer.whatsapp ?? "Sin canal"}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <ScoreBadge score={customer.repurchaseScore} />
-                            <p className="mt-2 text-xs text-stone-500">
-                              {getIntelligenceScoreBandLabel(customer.scoreBand)}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-stone-600">
-                            {customer.lastOrderAt ? formatDateTime(customer.lastOrderAt) : "Sin compra"}
-                          </td>
-                          <td className="px-4 py-3">{customer.orderCount}</td>
-                          <td className="px-4 py-3 font-medium text-stone-900">
-                            {formatCurrency(customer.averageTicket)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-stone-600">
-                            {customer.mainGoal ? customer.mainGoal.replaceAll("_", " ") : "Sin definir"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="max-w-xs text-sm leading-6 text-stone-700">{customer.suggestedAction}</p>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-
-            <section className="soft-panel rounded-[1.5rem] p-4 sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">Score de producto</p>
-                  <h2 className="mt-2 font-serif text-2xl text-stone-950">Salud comercial del catalogo</h2>
-                </div>
-                <Link
-                  className="rounded-full border border-stone-300 bg-white px-3 py-2 text-[11px] font-semibold text-stone-800 transition hover:border-stone-500"
-                  href="/admin/productos"
-                >
-                  Ver catalogo
-                </Link>
-              </div>
-
-              <div className="mt-4 overflow-hidden rounded-[1.3rem] border border-stone-200 bg-white">
-                <div className="max-h-[420px] overflow-auto">
-                  <table className="min-w-[920px] divide-y divide-stone-200 text-left">
-                    <thead className="bg-[#fff8f3] text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                      <tr>
-                        <th className="px-4 py-3">Producto</th>
-                        <th className="px-4 py-3">Score</th>
-                        <th className="px-4 py-3">Ventas</th>
-                        <th className="px-4 py-3">Resenas</th>
-                        <th className="px-4 py-3">Stock</th>
-                        <th className="px-4 py-3">Margen</th>
-                        <th className="px-4 py-3">Accion</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100 text-sm text-stone-700">
-                      {dashboard.productScores.map((product) => (
-                        <tr className="align-top" key={product.productId}>
-                          <td className="px-4 py-3">
-                            <p className="font-semibold text-stone-900">{product.name}</p>
-                            <p className="mt-1 text-xs text-stone-500">
-                              {product.brand} / {product.category}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <ScoreBadge score={product.intelligenceScore} />
-                            <p className="mt-2 text-xs text-stone-500">
-                              {getIntelligenceScoreBandLabel(product.scoreBand)}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-stone-900">{formatCurrency(product.revenue)}</p>
-                            <p className="mt-1 text-xs text-stone-500">{product.unitsSold} unidad(es)</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-stone-900">
-                              {product.averageRating > 0 ? `${product.averageRating.toFixed(1)} / 5` : "Sin rating"}
-                            </p>
-                            <p className="mt-1 text-xs text-stone-500">{product.reviewCount} review(s)</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getScoreClasses(product.inventoryScore)}`}>
-                              {product.stock} piezas
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-stone-900">{product.marginPercent.toFixed(0)}%</p>
-                            <p className="mt-1 text-xs text-stone-500">
-                              {product.marginSource === "real" ? "Costo real" : "Estimado"}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="max-w-xs text-sm leading-6 text-stone-700">{product.recommendedAction}</p>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          </div>
+          </section>
 
           <section className="soft-panel rounded-[1.5rem] p-4 sm:p-5">
-            <div className="grid gap-3 md:grid-cols-2">
-              <MetaPill
-                label="Mejor clienta a contactar"
-                value={topCustomer ? `${topCustomer.name} / score ${topCustomer.repurchaseScore}` : "Sin dato"}
-              />
-              <MetaPill
-                label="Producto mas fuerte hoy"
-                value={topProduct ? `${topProduct.name} / score ${topProduct.intelligenceScore}` : "Sin dato"}
-              />
+            <SectionHeader
+              eyebrow="Robustez de datos"
+              title="Donde aun falta telemetria persistida"
+              description="Estas notas explican que partes del analisis salen de eventos medidos y cuales de proxies honestos."
+            />
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {dashboard.analysis.measurementNotes.map((note) => (
+                <div className="rounded-[1.2rem] border border-dashed border-stone-300 bg-white px-4 py-4 text-sm leading-6 text-stone-600" key={note}>
+                  {note}
+                </div>
+              ))}
             </div>
           </section>
         </>
@@ -611,21 +609,132 @@ export function IntelligencePage() {
   );
 }
 
-function KpiCard({ kpi }: { kpi: IntelligenceKPI }) {
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
   return (
-    <article className={`rounded-[1.2rem] border px-4 py-3 ${getToneClasses(kpi.tone)}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-75">{kpi.label}</p>
-      <p className="mt-2 text-xl font-semibold">{kpi.displayValue}</p>
-      {kpi.helper ? <p className="mt-2 text-sm leading-6 opacity-80">{kpi.helper}</p> : null}
+    <div className="max-w-3xl">
+      <p className="section-label">{eyebrow}</p>
+      <h2 className="mt-2 font-serif text-2xl text-stone-950 sm:text-[2rem]">{title}</h2>
+      <p className="mt-3 text-sm leading-7 text-stone-600">{description}</p>
+    </div>
+  );
+}
+
+function StatCard({ metric }: { metric: IntelligenceStat }) {
+  return (
+    <article className={`rounded-[1.2rem] border px-4 py-4 ${getToneClasses(metric.tone)}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-75">{metric.label}</p>
+      <div className="mt-2 flex items-center gap-2">
+        <p className="text-xl font-semibold">{metric.displayValue}</p>
+        {metric.isEstimated ? (
+          <span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]">
+            Proxy
+          </span>
+        ) : null}
+      </div>
+      {metric.helper ? <p className="mt-2 text-sm leading-6 opacity-85">{metric.helper}</p> : null}
     </article>
   );
 }
 
-function ScoreBadge({ score }: { score: number }) {
+function QuestionGrid({ items }: { items: IntelligenceQuestionAnswer[] }) {
   return (
-    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getScoreClasses(score)}`}>
-      {score}/100
-    </span>
+    <div className="grid gap-3 md:grid-cols-2">
+      {items.map((item) => (
+        <QuestionCard item={item} key={item.id} />
+      ))}
+    </div>
+  );
+}
+
+function QuestionCard({ item }: { item: IntelligenceQuestionAnswer }) {
+  return (
+    <article className={`rounded-[1.3rem] border p-4 ${getToneClasses(item.tone)}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-75">{item.question}</p>
+      <p className="mt-3 text-sm font-semibold leading-7 text-current">{item.answer}</p>
+      {item.detail ? <p className="mt-2 text-sm leading-6 opacity-85">{item.detail}</p> : null}
+    </article>
+  );
+}
+
+function RankedList({
+  title,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  items: IntelligenceRankedItem[];
+  emptyLabel: string;
+}) {
+  return (
+    <article className="rounded-[1.4rem] border border-stone-200 bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">{title}</p>
+      {items.length === 0 ? (
+        <div className="mt-4 rounded-[1.1rem] border border-dashed border-stone-300 bg-[#fcfaf7] px-4 py-4 text-sm leading-6 text-stone-500">
+          {emptyLabel}
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {items.map((item) => (
+            <div className="rounded-[1.1rem] bg-[#fcfaf7] px-4 py-4" key={`${title}-${item.label}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-stone-900">{item.label}</p>
+                  {item.helper ? <p className="mt-1 text-xs text-stone-500">{item.helper}</p> : null}
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-semibold text-stone-900">{item.count}</p>
+                  <p className="mt-1 text-xs text-stone-500">
+                    {item.share != null ? `${item.share.toFixed(1)}%` : "Sin share"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function FunnelStepCard({ step }: { step: IntelligenceFunnelStep }) {
+  return (
+    <article className="rounded-[1.3rem] border border-stone-200 bg-white px-4 py-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+            {step.label}
+          </p>
+          <p className="mt-2 text-lg font-semibold text-stone-950">{step.displayValue}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-stone-200 bg-[#fff8f3] px-3 py-1 text-[11px] font-semibold text-stone-700">
+            {step.measurement === "measured"
+              ? "Medido"
+              : step.measurement === "proxy"
+                ? "Proxy"
+                : "Sin telemetria"}
+          </span>
+          {step.conversionFromPrevious != null ? (
+            <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold text-stone-700">
+              Conv. {step.conversionFromPrevious.toFixed(1)}%
+            </span>
+          ) : null}
+          {step.lossFromPrevious != null ? (
+            <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold text-stone-700">
+              Perdida {step.lossFromPrevious}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </article>
   );
 }
 

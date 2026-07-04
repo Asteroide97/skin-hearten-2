@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
     Brand,
@@ -14,6 +14,7 @@ from app.models import (
     Coupon,
     CouponRedemption,
     CRMContact,
+    CRMEvent,
     CRMReminder,
     CRMTask,
     Customer,
@@ -23,12 +24,14 @@ from app.models import (
     Payment,
     Product,
     ProductReview,
+    Routine,
     SkinQuizLead,
 )
 from app.services.mock_store import (
     COUPON_REDEMPTIONS,
     COUPONS,
     CRM_CONTACTS,
+    CRM_EVENTS,
     CRM_REMINDERS,
     CRM_TASKS,
     CUSTOMERS,
@@ -37,14 +40,15 @@ from app.services.mock_store import (
     PAYMENTS,
     PRODUCTS,
     PRODUCT_REVIEWS,
+    ROUTINES,
     SKIN_QUIZ_LEADS,
 )
 
 _INTELLIGENCE_SUGGESTED_QUESTIONS = [
-    "Que clientes deberia contactar hoy para recompra?",
-    "Que productos requieren accion comercial inmediata?",
-    "Donde se esta frenando la conversion entre Skin Quiz, CRM y ventas?",
-    "Que cupon o promocion deberia activar esta semana?",
+    "Por que bajaron las ventas?",
+    "Que rutina vende mas?",
+    "Que clientes debo contactar?",
+    "Que producto deberia promocionar?",
 ]
 
 _GOAL_LABELS = {
@@ -62,6 +66,13 @@ _SKIN_TYPE_LABELS = {
     "grasa": "grasa",
     "sensible": "sensible",
     "no_segura": "no estoy segura",
+}
+
+_AGE_RANGE_LABELS = {
+    "18_24": "18 a 24",
+    "25_34": "25 a 34",
+    "35_44": "35 a 44",
+    "45_plus": "45+",
 }
 
 
@@ -133,6 +144,12 @@ def _skin_type_label(value: str | None) -> str | None:
     return _SKIN_TYPE_LABELS.get(value, value.replace("_", " "))
 
 
+def _age_range_label(value: str | None) -> str | None:
+    if not value:
+        return None
+    return _AGE_RANGE_LABELS.get(value, value.replace("_", " "))
+
+
 def _score_band(score: int) -> str:
     if score >= 80:
         return "alto"
@@ -149,10 +166,35 @@ def _format_percent(value: float) -> str:
     return f"{value:.0f}%"
 
 
+def _format_percent_precise(value: float) -> str:
+    return f"{value:.1f}%"
+
+
 def _format_delta(current: float, previous: float) -> float | None:
     if previous == 0:
         return None if current == 0 else 100.0
     return round(((current - previous) / previous) * 100, 1)
+
+
+def _counter_to_ranked_items(
+    counter: Counter[str],
+    *,
+    limit: int = 5,
+    total: int | None = None,
+    helper_lookup: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    denominator = total if total and total > 0 else None
+    items: list[dict[str, Any]] = []
+    for label, count in counter.most_common(limit):
+        items.append(
+            {
+                "label": label,
+                "count": int(count),
+                "share": round((count / denominator) * 100, 1) if denominator else None,
+                "helper": helper_lookup.get(label) if helper_lookup else None,
+            }
+        )
+    return items
 
 
 def _safe_load(
@@ -490,6 +532,39 @@ def _load_crm_reminders(db: Session) -> list[dict[str, Any]]:
     return _safe_load(db, loader, fallback)
 
 
+def _load_crm_events(db: Session) -> list[dict[str, Any]]:
+    def loader() -> list[dict[str, Any]]:
+        rows = db.query(CRMEvent).all()
+        return [
+            {
+                "id": int(event.id),
+                "contact_id": int(event.contact_id) if event.contact_id is not None else None,
+                "anonymous_id": event.anonymous_id,
+                "event_type": event.event_type,
+                "payload_json": event.payload_json or {},
+                "source": event.source,
+                "created_at": _normalize_datetime(event.created_at),
+            }
+            for event in rows
+        ]
+
+    def fallback() -> list[dict[str, Any]]:
+        return [
+            {
+                "id": int(event["id"]),
+                "contact_id": int(event["contact_id"]) if event.get("contact_id") is not None else None,
+                "anonymous_id": event.get("anonymous_id"),
+                "event_type": str(event.get("event_type") or "unknown"),
+                "payload_json": deepcopy(event.get("payload_json") or {}),
+                "source": str(event.get("source") or "crm"),
+                "created_at": _normalize_datetime(event.get("created_at")),
+            }
+            for event in deepcopy(CRM_EVENTS)
+        ]
+
+    return _safe_load(db, loader, fallback)
+
+
 def _load_skin_quiz_leads(db: Session) -> list[dict[str, Any]]:
     def loader() -> list[dict[str, Any]]:
         rows = db.query(SkinQuizLead).all()
@@ -525,6 +600,52 @@ def _load_skin_quiz_leads(db: Session) -> list[dict[str, Any]]:
             }
             for lead in deepcopy(SKIN_QUIZ_LEADS)
         ]
+
+    return _safe_load(db, loader, fallback)
+
+
+def _load_routines(db: Session) -> list[dict[str, Any]]:
+    def loader() -> list[dict[str, Any]]:
+        rows = (
+            db.query(Routine)
+            .options(selectinload(Routine.steps), selectinload(Routine.product_links))
+            .all()
+        )
+        return [
+            {
+                "id": int(routine.id),
+                "name": routine.name,
+                "slug": routine.slug,
+                "description": routine.description,
+                "goal_key": routine.goal_key,
+                "category_key": routine.category_key,
+                "is_active": bool(routine.is_active),
+                "steps": [
+                    {
+                        "id": int(step.id),
+                        "product_id": int(step.product_id),
+                        "sort_order": int(step.sort_order or 0),
+                        "title": step.title,
+                        "short_description": step.short_description,
+                        "badge": step.badge,
+                    }
+                    for step in routine.steps
+                ],
+                "linked_products": [
+                    {
+                        "id": int(link.id),
+                        "product_id": int(link.product_id),
+                        "is_primary": bool(link.is_primary),
+                        "priority": int(link.priority or 0),
+                    }
+                    for link in routine.product_links
+                ],
+            }
+            for routine in rows
+        ]
+
+    def fallback() -> list[dict[str, Any]]:
+        return [deepcopy(routine) for routine in ROUTINES]
 
     return _safe_load(db, loader, fallback)
 
@@ -666,7 +787,9 @@ def _build_data_bundle(db: Session) -> dict[str, Any]:
     crm_contacts = _load_crm_contacts(db)
     crm_tasks = _load_crm_tasks(db)
     crm_reminders = _load_crm_reminders(db)
+    crm_events = _load_crm_events(db)
     skin_quiz_leads = _load_skin_quiz_leads(db)
+    routines = _load_routines(db)
     coupons = _load_coupons(db)
     coupon_redemptions = _load_coupon_redemptions(db)
     inventory_movements = _load_inventory_movements(db)
@@ -680,7 +803,9 @@ def _build_data_bundle(db: Session) -> dict[str, Any]:
         "crm_contacts": crm_contacts,
         "crm_tasks": crm_tasks,
         "crm_reminders": crm_reminders,
+        "crm_events": crm_events,
         "skin_quiz_leads": skin_quiz_leads,
+        "routines": routines,
         "coupons": coupons,
         "coupon_redemptions": coupon_redemptions,
         "inventory_movements": inventory_movements,
@@ -1508,6 +1633,8 @@ def _build_context(bundle: dict[str, Any], now: datetime) -> dict[str, Any]:
     )
 
     context = {
+        "bundle": bundle,
+        "profiles": profiles,
         "generated_at": now,
         "sales": {
             "revenue_24h": revenue_24h,
@@ -1554,14 +1681,981 @@ def _build_context(bundle: dict[str, Any], now: datetime) -> dict[str, Any]:
         "product_scores": product_scores,
         "critical_products": critical_products,
         "top_margin_product_name": top_margin_product["name"] if top_margin_product else "Sin datos suficientes",
+        "top_margin_product": top_margin_product,
+        "top_revenue_product": top_revenue_product,
+        "realized_orders": realized_orders,
+        "realized_orders_30d": realized_orders_30d,
+        "payments_by_order_id": payments_by_order_id,
     }
     return context
+
+
+def _build_profile_identity_maps(
+    profiles: list[dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    by_email: dict[str, dict[str, Any]] = {}
+    by_phone: dict[str, dict[str, Any]] = {}
+    for profile in profiles:
+        normalized_email = _normalize_email(profile.get("email"))
+        normalized_phone = _normalize_phone(profile.get("whatsapp"))
+        if normalized_email:
+            by_email[normalized_email] = profile
+        if normalized_phone:
+            by_phone[normalized_phone] = profile
+    return by_email, by_phone
+
+
+def _find_profile_for_identity(
+    *,
+    email: str | None,
+    phone: str | None,
+    by_email: dict[str, dict[str, Any]],
+    by_phone: dict[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    normalized_email = _normalize_email(email)
+    normalized_phone = _normalize_phone(phone)
+    if normalized_email and normalized_email in by_email:
+        return by_email[normalized_email]
+    if normalized_phone and normalized_phone in by_phone:
+        return by_phone[normalized_phone]
+    return None
+
+
+def _build_period_block(
+    *,
+    id: str,
+    label: str,
+    current_orders: list[dict[str, Any]],
+    previous_orders: list[dict[str, Any]],
+    context: dict[str, Any],
+    now: datetime,
+) -> dict[str, Any]:
+    current_revenue = round(sum(_to_float(order.get("grand_total")) for order in current_orders), 2)
+    previous_revenue = round(sum(_to_float(order.get("grand_total")) for order in previous_orders), 2)
+    current_ticket = round(current_revenue / len(current_orders), 2) if current_orders else 0.0
+    previous_ticket = round(previous_revenue / len(previous_orders), 2) if previous_orders else 0.0
+    revenue_delta = _format_delta(current_revenue, previous_revenue)
+    ticket_delta = _format_delta(current_ticket, previous_ticket)
+
+    high_repurchase = sum(
+        1
+        for customer in context["customer_scores"]
+        if customer.get("last_order_at")
+        and customer["last_order_at"] >= min((order.get("created_at") or now) for order in current_orders)
+        and int(customer["repurchase_score"]) >= 70
+    ) if current_orders else 0
+
+    if not current_orders:
+        headline = f"{label} no registra ventas cobradas todavia."
+        tone = "warning"
+    else:
+        revenue_phrase = (
+            "sin comparativo previo"
+            if revenue_delta is None
+            else f"ventas {'subieron' if revenue_delta >= 0 else 'cayeron'} {abs(revenue_delta):.0f}%"
+        )
+        ticket_phrase = (
+            "ticket sin comparativo"
+            if ticket_delta is None
+            else f"ticket {'subio' if ticket_delta >= 0 else 'cayo'} {abs(ticket_delta):.0f}%"
+        )
+        headline = f"{label}: {revenue_phrase} y el ticket promedio {ticket_phrase}."
+        tone = "positive" if revenue_delta and revenue_delta > 0 else "neutral"
+
+    details = [
+        f"{len(current_orders)} orden(es) cobradas por {_format_currency(current_revenue)}.",
+        f"Ticket promedio de {_format_currency(current_ticket)}.",
+        (
+            "No hay productos con stock critico."
+            if context["inventory"]["critical_count"] == 0
+            else f"{context['inventory']['critical_count']} SKU(s) siguen en inventario critico."
+        ),
+    ]
+    if high_repurchase > 0:
+        details.append(f"{high_repurchase} clienta(s) de este periodo ya quedaron listas para recompra.")
+
+    return {
+        "id": id,
+        "label": label,
+        "headline": headline,
+        "details": details[:4],
+        "tone": tone,
+    }
+
+
+def _build_executive_periods(context: dict[str, Any], now: datetime) -> list[dict[str, Any]]:
+    realized_orders = context["realized_orders"]
+    start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_week = start_today - timedelta(days=start_today.weekday())
+    start_month = start_today.replace(day=1)
+
+    def orders_between(start: datetime, end: datetime) -> list[dict[str, Any]]:
+        return [order for order in realized_orders if start <= (order.get("created_at") or now) < end]
+
+    return [
+        _build_period_block(
+            id="today",
+            label="Hoy",
+            current_orders=orders_between(start_today, now + timedelta(seconds=1)),
+            previous_orders=orders_between(start_today - timedelta(days=1), start_today),
+            context=context,
+            now=now,
+        ),
+        _build_period_block(
+            id="week",
+            label="Esta semana",
+            current_orders=orders_between(start_week, now + timedelta(seconds=1)),
+            previous_orders=orders_between(start_week - timedelta(days=7), start_week),
+            context=context,
+            now=now,
+        ),
+        _build_period_block(
+            id="month",
+            label="Este mes",
+            current_orders=orders_between(start_month, now + timedelta(seconds=1)),
+            previous_orders=orders_between((start_month - timedelta(days=1)).replace(day=1), start_month),
+            context=context,
+            now=now,
+        ),
+    ]
+
+
+def _build_routine_maps(bundle: dict[str, Any]) -> tuple[dict[int, dict[str, Any]], dict[int, set[int]]]:
+    active_routines = {
+        int(routine["id"]): routine
+        for routine in bundle["routines"]
+        if bool(routine.get("is_active", True))
+    }
+    routine_product_ids: dict[int, set[int]] = {}
+    for routine_id, routine in active_routines.items():
+        product_ids = {
+            int(step.get("product_id") or 0)
+            for step in routine.get("steps", [])
+            if int(step.get("product_id") or 0) > 0
+        }
+        product_ids.update(
+            int(link.get("product_id") or 0)
+            for link in routine.get("linked_products", [])
+            if int(link.get("product_id") or 0) > 0
+        )
+        routine_product_ids[routine_id] = product_ids
+    return active_routines, routine_product_ids
+
+
+def _match_routine_name_for_lead(
+    lead: dict[str, Any],
+    *,
+    routines: dict[int, dict[str, Any]],
+    routine_product_ids: dict[int, set[int]],
+) -> str | None:
+    answers = lead.get("answers_json") or {}
+    result = lead.get("result_json") or {}
+    lead_goal = str(answers.get("goal") or "").strip()
+    recommended_ids = {int(product_id) for product_id in result.get("recommendedProductIds", []) if str(product_id).isdigit()}
+    best_name: str | None = None
+    best_score = 0
+
+    for routine_id, routine in routines.items():
+        score = 0
+        if lead_goal and str(routine.get("goal_key") or "") == lead_goal:
+            score += 4
+        overlap = len(recommended_ids & routine_product_ids.get(routine_id, set()))
+        score += overlap
+        if score > best_score:
+            best_score = score
+            best_name = str(routine.get("name") or "")
+
+    return best_name if best_score > 0 and best_name else None
+
+
+def _match_routine_for_order(
+    product_ids: set[int],
+    *,
+    routines: dict[int, dict[str, Any]],
+    routine_product_ids: dict[int, set[int]],
+) -> tuple[dict[str, Any] | None, int]:
+    best_routine: dict[str, Any] | None = None
+    best_overlap = 0
+    for routine_id, routine in routines.items():
+        overlap = len(product_ids & routine_product_ids.get(routine_id, set()))
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best_routine = routine
+    return best_routine, best_overlap
+
+
+def _build_skin_quiz_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
+    bundle = context["bundle"]
+    leads = bundle["skin_quiz_leads"]
+    events = [event for event in bundle["crm_events"] if str(event.get("event_type")) == "skin_quiz_completed"]
+    profiles = context["profiles"]
+    by_email, by_phone = _build_profile_identity_maps(profiles)
+    product_by_id = {int(product["id"]): product for product in bundle["products"]}
+    routines, routine_product_ids = _build_routine_maps(bundle)
+
+    started_count = None
+    completed_count = len(events) if events else len(leads)
+    lead_count = len(leads)
+    completion_rate = round((completed_count / started_count) * 100, 1) if started_count else None
+
+    skin_type_counter: Counter[str] = Counter()
+    goal_counter: Counter[str] = Counter()
+    age_counter: Counter[str] = Counter()
+    routine_counter: Counter[str] = Counter()
+    recommended_counter: Counter[str] = Counter()
+    purchased_counter: Counter[str] = Counter()
+    recommended_shares: Counter[str] = Counter()
+    purchased_shares: Counter[str] = Counter()
+
+    for lead in leads:
+        answers = lead.get("answers_json") or {}
+        result = lead.get("result_json") or {}
+        skin_type_counter[_skin_type_label(answers.get("skinType")) or "sin definir"] += 1
+        goal_counter[_goal_label(answers.get("goal")) or "sin definir"] += 1
+        age_counter[_age_range_label(answers.get("ageRange")) or "sin definir"] += 1
+
+        routine_name = _match_routine_name_for_lead(
+            lead,
+            routines=routines,
+            routine_product_ids=routine_product_ids,
+        )
+        if routine_name:
+            routine_counter[routine_name] += 1
+
+        recommended_ids = {
+            int(product_id)
+            for product_id in result.get("recommendedProductIds", [])
+            if str(product_id).isdigit()
+        }
+        for product_id in recommended_ids:
+            product = product_by_id.get(product_id)
+            if product:
+                recommended_counter[str(product["name"])] += 1
+
+        profile = _find_profile_for_identity(
+            email=lead.get("email"),
+            phone=lead.get("whatsapp"),
+            by_email=by_email,
+            by_phone=by_phone,
+        )
+        if not profile:
+            continue
+
+        purchased_after_lead = set()
+        for product_id in profile.get("product_ids", set()):
+            if int(product_id) in recommended_ids:
+                product = product_by_id.get(int(product_id))
+                if product:
+                    purchased_after_lead.add(str(product["name"]))
+        for product_name in purchased_after_lead:
+            purchased_counter[product_name] += 1
+
+    top_recommended_product = recommended_counter.most_common(1)[0] if recommended_counter else None
+    top_purchased_product = purchased_counter.most_common(1)[0] if purchased_counter else None
+    recommended_share = (
+        round((top_recommended_product[1] / lead_count) * 100, 1)
+        if top_recommended_product and lead_count > 0
+        else None
+    )
+    purchased_share = (
+        round((top_purchased_product[1] / lead_count) * 100, 1)
+        if top_purchased_product and lead_count > 0
+        else None
+    )
+    share_gap = (
+        round(recommended_share - purchased_share, 1)
+        if recommended_share is not None and purchased_share is not None
+        else None
+    )
+
+    metrics = [
+        {
+            "id": "quiz_started",
+            "label": "Iniciaron",
+            "value": float(started_count) if started_count is not None else None,
+            "displayValue": str(started_count) if started_count is not None else "Sin telemetria",
+            "helper": "La tienda todavia no persiste aperturas ni arranques del quiz.",
+            "isEstimated": True,
+            "tone": "warning",
+        },
+        {
+            "id": "quiz_completed",
+            "label": "Terminaron",
+            "value": float(completed_count),
+            "displayValue": str(completed_count),
+            "helper": "Quizzes completados que quedaron persistidos en backend.",
+            "isEstimated": not bool(events),
+            "tone": "neutral",
+        },
+        {
+            "id": "quiz_leads",
+            "label": "Dejaron lead",
+            "value": float(lead_count),
+            "displayValue": str(lead_count),
+            "helper": "Leads capturados y sincronizados con FastAPI.",
+            "isEstimated": False,
+            "tone": "positive" if lead_count > 0 else "neutral",
+        },
+        {
+            "id": "quiz_conversion",
+            "label": "Conversion",
+            "value": completion_rate,
+            "displayValue": _format_percent_precise(completion_rate) if completion_rate is not None else "Sin base",
+            "helper": "Se activara cuando exista telemetria persistida de inicios.",
+            "isEstimated": True,
+            "tone": "neutral",
+        },
+    ]
+
+    answers = [
+        {
+            "id": "quiz_skin_type",
+            "question": "Que tipo de piel domina?",
+            "answer": skin_type_counter.most_common(1)[0][0] if skin_type_counter else "Sin dato suficiente",
+            "detail": (
+                f"{skin_type_counter.most_common(1)[0][1]} respuesta(s) registradas."
+                if skin_type_counter
+                else None
+            ),
+            "tone": "neutral",
+        },
+        {
+            "id": "quiz_goal",
+            "question": "Que problema domina?",
+            "answer": goal_counter.most_common(1)[0][0] if goal_counter else "Sin dato suficiente",
+            "detail": (
+                f"{goal_counter.most_common(1)[0][1]} quiz(es) llegan con ese objetivo."
+                if goal_counter
+                else None
+            ),
+            "tone": "neutral",
+        },
+        {
+            "id": "quiz_age",
+            "question": "Que rango de edad destaca?",
+            "answer": age_counter.most_common(1)[0][0] if age_counter else "Sin dato suficiente",
+            "detail": (
+                f"{age_counter.most_common(1)[0][1]} respuesta(s) en ese rango."
+                if age_counter
+                else None
+            ),
+            "tone": "neutral",
+        },
+        {
+            "id": "quiz_routine",
+            "question": "Que rutina termina recomendandose mas?",
+            "answer": routine_counter.most_common(1)[0][0] if routine_counter else "Sin rutina dominante todavia",
+            "detail": (
+                f"{routine_counter.most_common(1)[0][1]} recomendacion(es) con match fuerte."
+                if routine_counter
+                else "Se infiere por objetivo del quiz y productos sugeridos."
+            ),
+            "tone": "positive" if routine_counter else "warning",
+        },
+        {
+            "id": "quiz_gap",
+            "question": "Donde esta la mayor diferencia entre recomendacion y compra?",
+            "answer": (
+                f"{top_recommended_product[0]} aparece en {_format_percent_precise(recommended_share)} de las recomendaciones y {_format_percent_precise(purchased_share)} de las compras relacionadas."
+                if top_recommended_product and top_purchased_product and recommended_share is not None and purchased_share is not None
+                else "Todavia no hay suficientes pedidos ligados a quizzes para medir la brecha real."
+            ),
+            "detail": (
+                f"Brecha de {abs(share_gap):.1f} puntos porcentuales."
+                if share_gap is not None
+                else "La comparativa crecera conforme entren mas leads con compra."
+            ),
+            "tone": "warning" if share_gap and share_gap > 10 else "neutral",
+        },
+    ]
+
+    return {
+        "metrics": metrics,
+        "answers": answers,
+        "recommended_products": _counter_to_ranked_items(recommended_counter, total=lead_count),
+        "purchased_products": _counter_to_ranked_items(purchased_counter, total=lead_count),
+        "measurement_note": "Sin telemetria persistida de aperturas e inicios, esta lectura se basa en quizzes completados y leads sincronizados.",
+    }
+
+
+def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
+    bundle = context["bundle"]
+    routines, routine_product_ids = _build_routine_maps(bundle)
+    realized_orders = context["realized_orders"]
+    items_by_order_id: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for item in bundle["order_items"]:
+        items_by_order_id[int(item["order_id"])].append(item)
+
+    full_routine_orders = 0
+    single_product_orders = 0
+    full_routine_value = 0.0
+    single_product_value = 0.0
+    routine_counter: Counter[str] = Counter()
+
+    for order in realized_orders:
+        order_items = items_by_order_id.get(int(order["id"]), [])
+        product_ids = {int(item.get("product_id") or 0) for item in order_items if int(item.get("product_id") or 0) > 0}
+        if not product_ids:
+            continue
+        matched_routine, overlap = _match_routine_for_order(
+            product_ids,
+            routines=routines,
+            routine_product_ids=routine_product_ids,
+        )
+        if not matched_routine or overlap <= 0:
+            continue
+
+        order_total = _to_float(order.get("grand_total"))
+        threshold = min(3, len(routine_product_ids.get(int(matched_routine["id"]), set())) or 1)
+        if overlap >= threshold:
+            full_routine_orders += 1
+            full_routine_value = round(full_routine_value + order_total, 2)
+            routine_counter[str(matched_routine.get("name") or "Rutina")] += 1
+        elif len(product_ids) == 1 or overlap == 1:
+            single_product_orders += 1
+            single_product_value = round(single_product_value + order_total, 2)
+
+    average_full_routine_value = round(full_routine_value / full_routine_orders, 2) if full_routine_orders else 0.0
+    average_single_product_value = round(single_product_value / single_product_orders, 2) if single_product_orders else 0.0
+    ticket_lift = (
+        round(((average_full_routine_value - average_single_product_value) / average_single_product_value) * 100, 1)
+        if average_full_routine_value > 0 and average_single_product_value > 0
+        else None
+    )
+
+    metrics = [
+        {
+            "id": "routine_modal_opened",
+            "label": "Modal abierto",
+            "value": None,
+            "displayValue": "Sin telemetria",
+            "helper": "La apertura del modal todavia no se guarda de forma persistente.",
+            "isEstimated": True,
+            "tone": "warning",
+        },
+        {
+            "id": "routine_full_orders",
+            "label": "Rutina completa",
+            "value": float(full_routine_orders),
+            "displayValue": str(full_routine_orders),
+            "helper": "Pedidos con 3 o mas pasos de una misma rutina.",
+            "isEstimated": True,
+            "tone": "positive" if full_routine_orders > 0 else "neutral",
+        },
+        {
+            "id": "routine_single_orders",
+            "label": "Solo un producto",
+            "value": float(single_product_orders),
+            "displayValue": str(single_product_orders),
+            "helper": "Pedidos donde solo entro el producto principal de una rutina.",
+            "isEstimated": True,
+            "tone": "neutral",
+        },
+        {
+            "id": "routine_ticket_lift",
+            "label": "Lift en ticket",
+            "value": ticket_lift,
+            "displayValue": _format_percent_precise(ticket_lift) if ticket_lift is not None else "Sin base",
+            "helper": "Comparativo entre pedido de rutina completa vs producto unico.",
+            "isEstimated": True,
+            "tone": "positive" if ticket_lift and ticket_lift > 0 else "neutral",
+        },
+    ]
+
+    answers = [
+        {
+            "id": "routine_top",
+            "question": "Que rutina termina vendiendo mas?",
+            "answer": routine_counter.most_common(1)[0][0] if routine_counter else "Todavia no hay una rutina con masa critica",
+            "detail": (
+                f"{routine_counter.most_common(1)[0][1]} pedido(s) atribuidos."
+                if routine_counter
+                else "La atribucion se infiere por coincidencia de pasos comprados."
+            ),
+            "tone": "positive" if routine_counter else "warning",
+        },
+        {
+            "id": "routine_value",
+            "question": "Cuanto vale cada flujo?",
+            "answer": (
+                f"Rutina completa {_format_currency(average_full_routine_value)} vs producto unico {_format_currency(average_single_product_value)}."
+                if average_full_routine_value or average_single_product_value
+                else "Todavia no hay suficiente volumen para comparar tickets por rutina."
+            ),
+            "detail": (
+                f"Las rutinas elevan el ticket {abs(ticket_lift):.1f}%."
+                if ticket_lift is not None
+                else "Hace falta mas historial para medir el efecto sobre ticket."
+            ),
+            "tone": "positive" if ticket_lift and ticket_lift > 0 else "neutral",
+        },
+        {
+            "id": "routine_measurement",
+            "question": "Que parte falta medir mejor?",
+            "answer": "Aun no existe telemetria persistida de aperturas o agregado de rutina completa.",
+            "detail": "Hoy la lectura se apoya en pedidos atribuidos a secuencias de rutina, no en clics previos.",
+            "tone": "warning",
+        },
+    ]
+
+    return {
+        "metrics": metrics,
+        "answers": answers,
+        "routines": _counter_to_ranked_items(routine_counter, total=max(full_routine_orders, 1)),
+        "measurement_note": "Routine Builder se interpreta con atribucion por pedidos, no con aperturas del modal.",
+        "full_routine_orders": full_routine_orders,
+        "single_product_orders": single_product_orders,
+    }
+
+
+def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict[str, Any]]:
+    bundle = context["bundle"]
+    product_scores = context["product_scores"]
+    items_by_order_id: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for item in bundle["order_items"]:
+        items_by_order_id[int(item["order_id"])].append(item)
+
+    current_units: Counter[int] = Counter()
+    previous_units: Counter[int] = Counter()
+    current_revenue: Counter[int] = Counter()
+    previous_revenue: Counter[int] = Counter()
+    for order in bundle["orders"]:
+        payment = context["payments_by_order_id"].get(int(order["id"]))
+        if not _is_realized_order(order, payment):
+            continue
+        created_at = order.get("created_at") or now
+        bucket = None
+        if created_at >= now - timedelta(days=30):
+            bucket = "current"
+        elif now - timedelta(days=60) <= created_at < now - timedelta(days=30):
+            bucket = "previous"
+        if bucket is None:
+            continue
+        for item in items_by_order_id.get(int(order["id"]), []):
+            product_id = int(item.get("product_id") or 0)
+            quantity = int(item.get("quantity") or 0)
+            line_revenue = quantity * _to_float(item.get("unit_price"))
+            if bucket == "current":
+                current_units[product_id] += quantity
+                current_revenue[product_id] += line_revenue
+            else:
+                previous_units[product_id] += quantity
+                previous_revenue[product_id] += line_revenue
+
+    product_by_id = {int(product["product_id"]): product for product in product_scores}
+    most_sold = max(product_scores, key=lambda item: (int(item["units_sold"]), float(item["revenue"])), default=None)
+    highest_margin = max(product_scores, key=lambda item: float(item.get("_gross_profit", 0)), default=None)
+    most_reviewed = max(product_scores, key=lambda item: (int(item["review_count"]), float(item["average_rating"])), default=None)
+
+    growth_candidates = []
+    drop_candidates = []
+    for product in product_scores:
+        product_id = int(product["product_id"])
+        current_value = float(current_revenue.get(product_id, 0))
+        previous_value = float(previous_revenue.get(product_id, 0))
+        delta = current_value - previous_value
+        delta_percent = _format_delta(current_value, previous_value)
+        growth_candidates.append((delta, delta_percent if delta_percent is not None else -9999, product))
+        drop_candidates.append((delta, delta_percent if delta_percent is not None else 9999, product))
+
+    biggest_growth = max(growth_candidates, key=lambda item: (item[0], item[1]), default=None)
+    biggest_drop = min(drop_candidates, key=lambda item: (item[0], item[1]), default=None)
+
+    product_view_events = Counter()
+    for event in bundle["crm_events"]:
+        if str(event.get("event_type")) != "product_view":
+            continue
+        payload = event.get("payload_json") or {}
+        product_name = str(payload.get("product_name") or payload.get("productName") or "Producto")
+        product_view_events[product_name] += 1
+
+    non_realized_product_counter = Counter()
+    for order in bundle["orders"]:
+        payment = context["payments_by_order_id"].get(int(order["id"]))
+        if _is_realized_order(order, payment):
+            continue
+        for item in items_by_order_id.get(int(order["id"]), []):
+            non_realized_product_counter[str(item.get("product_name") or "Producto")] += int(item.get("quantity") or 0)
+
+    most_viewed = product_view_events.most_common(1)[0] if product_view_events else None
+    highest_abandonment = non_realized_product_counter.most_common(1)[0] if non_realized_product_counter else None
+
+    return [
+        {
+            "id": "product_best_seller",
+            "question": "Cual es el producto mas vendido?",
+            "answer": (
+                f"{most_sold['name']} con {most_sold['units_sold']} unidad(es) y {_format_currency(most_sold['revenue'])}."
+                if most_sold
+                else "Sin ventas suficientes todavia."
+            ),
+            "detail": most_sold["recommended_action"] if most_sold else None,
+            "tone": "positive",
+        },
+        {
+            "id": "product_growth",
+            "question": "Cual muestra mayor crecimiento?",
+            "answer": (
+                f"{biggest_growth[2]['name']} con {biggest_growth[0]:+.0f} MXN vs. los 30 dias previos."
+                if biggest_growth and biggest_growth[0] > 0
+                else "No hay un crecimiento claro contra el periodo anterior."
+            ),
+            "detail": (
+                f"Variacion relativa de {biggest_growth[1]:+.1f}%."
+                if biggest_growth and biggest_growth[1] != -9999
+                else "Falta mas historial para comparar mejor."
+            ),
+            "tone": "positive" if biggest_growth and biggest_growth[0] > 0 else "neutral",
+        },
+        {
+            "id": "product_drop",
+            "question": "Cual muestra mayor caida?",
+            "answer": (
+                f"{biggest_drop[2]['name']} con {biggest_drop[0]:+.0f} MXN frente al periodo previo."
+                if biggest_drop and biggest_drop[0] < 0
+                else "No se detecta una caida relevante en el periodo."
+            ),
+            "detail": (
+                f"Variacion relativa de {biggest_drop[1]:+.1f}%."
+                if biggest_drop and biggest_drop[1] != 9999
+                else "El comparativo seguira mejorando con mas ventas."
+            ),
+            "tone": "warning" if biggest_drop and biggest_drop[0] < 0 else "neutral",
+        },
+        {
+            "id": "product_margin",
+            "question": "Cual deja mayor margen?",
+            "answer": (
+                f"{highest_margin['name']} lidera por margen bruto estimado."
+                if highest_margin
+                else "Sin costos suficientes para comparar."
+            ),
+            "detail": (
+                f"Margen {highest_margin['marginPercent']:.0f}% y accion sugerida: {highest_margin['recommended_action']}"
+                if highest_margin
+                else None
+            ),
+            "tone": "positive",
+        },
+        {
+            "id": "product_reviews",
+            "question": "Cual concentra mas resenas?",
+            "answer": (
+                f"{most_reviewed['name']} con {most_reviewed['reviewCount']} resena(s) y rating {most_reviewed['averageRating']:.1f}/5."
+                if most_reviewed and most_reviewed["reviewCount"] > 0
+                else "Aun no hay resenas suficientes para una lectura fuerte."
+            ),
+            "detail": "Las resenas aprobadas sostienen confianza y conversion." if most_reviewed else None,
+            "tone": "neutral",
+        },
+        {
+            "id": "product_views",
+            "question": "Cual es el mas visto?",
+            "answer": (
+                f"{most_viewed[0]} con {most_viewed[1]} vista(s) persistidas."
+                if most_viewed
+                else "Todavia no existe telemetria persistida de vistas de producto."
+            ),
+            "detail": "La lectura se activara automaticamente si esos eventos empiezan a llegar al backend.",
+            "tone": "warning" if not most_viewed else "neutral",
+        },
+        {
+            "id": "product_abandonment",
+            "question": "Cual tiene mayor abandono?",
+            "answer": (
+                f"{highest_abandonment[0]} aparece en {highest_abandonment[1]} unidad(es) de pedidos no cobrados."
+                if highest_abandonment
+                else "No hay abandono medible en ordenes pendientes o fallidas."
+            ),
+            "detail": "Se calcula con pedidos no realizados, no con vistas o clicks.",
+            "tone": "warning" if highest_abandonment else "neutral",
+        },
+    ]
+
+
+def _build_customer_analysis(context: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    profiles = context["profiles"]
+    scores = context["customer_scores"]
+
+    new_customers = sum(
+        1
+        for profile in profiles
+        if int(profile.get("orders_count") or 0) == 1 and (profile.get("days_since_last_order") or 10_000) <= 30
+    )
+    active_customers = sum(
+        1
+        for profile in profiles
+        if int(profile.get("orders_count") or 0) > 0 and (profile.get("days_since_last_order") or 10_000) <= 90
+    )
+    vip_customers = sum(
+        1
+        for profile in profiles
+        if _to_float(profile.get("total_spent")) >= 2500 or int(profile.get("orders_count") or 0) >= 3
+    )
+    lost_customers = sum(
+        1
+        for profile in profiles
+        if int(profile.get("orders_count") or 0) > 0 and (profile.get("days_since_last_order") or 0) > 120
+    )
+    at_risk_customers = sum(
+        1
+        for profile in profiles
+        if int(profile.get("orders_count") or 0) > 0 and 60 <= (profile.get("days_since_last_order") or 0) <= 120
+    )
+    ready_repurchase = sum(1 for customer in scores if int(customer["repurchase_score"]) >= 70)
+
+    answers = [
+        {
+            "id": "customers_new",
+            "question": "Cuantos clientes nuevos entraron?",
+            "answer": f"{new_customers} clienta(s) hicieron su primera compra en la ventana reciente.",
+            "detail": "Se toma como nueva a quien solo tiene una compra y esta dentro de los ultimos 30 dias.",
+            "tone": "positive" if new_customers > 0 else "neutral",
+        },
+        {
+            "id": "customers_active",
+            "question": "Cuantos siguen activos?",
+            "answer": f"{active_customers} clienta(s) mantienen compra o actividad en los ultimos 90 dias.",
+            "detail": "La base activa es la que mejor responde a recompra y bundles.",
+            "tone": "neutral",
+        },
+        {
+            "id": "customers_vip",
+            "question": "Cuantos son VIP?",
+            "answer": f"{vip_customers} clienta(s) ya ameritan trato VIP por recurrencia o gasto acumulado.",
+            "detail": "Conviene darles seguimiento personalizado y anticipar refill.",
+            "tone": "positive" if vip_customers > 0 else "neutral",
+        },
+        {
+            "id": "customers_lost",
+            "question": "Cuantos clientes se consideran perdidos?",
+            "answer": f"{lost_customers} clienta(s) llevan mas de 120 dias sin compra.",
+            "detail": "Requieren reactivacion con mensaje mas editorial que promocional.",
+            "tone": "warning" if lost_customers > 0 else "neutral",
+        },
+        {
+            "id": "customers_risk",
+            "question": "Cuantos estan en riesgo?",
+            "answer": f"{at_risk_customers} clienta(s) estan entrando en ventana de riesgo.",
+            "detail": "La oportunidad esta antes de que pasen a perdida total.",
+            "tone": "warning" if at_risk_customers > 0 else "neutral",
+        },
+        {
+            "id": "customers_repurchase",
+            "question": "Cuantos ya estan listos para recompra?",
+            "answer": f"{ready_repurchase} clienta(s) ya tienen score de recompra alto.",
+            "detail": "El score combina recencia, frecuencia, ticket y afinidad con rutina.",
+            "tone": "positive" if ready_repurchase > 0 else "neutral",
+        },
+    ]
+
+    return answers, scores[:6]
+
+
+def _classify_order_origin(
+    *,
+    order: dict[str, Any],
+    profile: dict[str, Any] | None,
+    lead_before_order: dict[str, Any] | None,
+) -> str:
+    raw_sources = set()
+    if profile:
+        raw_sources.update(str(source or "").lower() for source in profile.get("sources", set()))
+    if lead_before_order:
+        raw_sources.add(str(lead_before_order.get("source") or "").lower())
+    raw_sources.add(str(order.get("source") or "").lower())
+
+    if any("quiz" in source for source in raw_sources):
+        return "Quiz"
+    if any("search" in source or "busqueda" in source for source in raw_sources):
+        return "Busqueda"
+    if any("category" in source or "categoria" in source for source in raw_sources):
+        return "Categoria"
+    if any("blog" in source or "article" in source for source in raw_sources):
+        return "Blog"
+    return "Directo"
+
+
+def _build_marketing_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
+    bundle = context["bundle"]
+    profiles = context["profiles"]
+    realized_orders = context["realized_orders"]
+    by_email, by_phone = _build_profile_identity_maps(profiles)
+
+    coupon_by_id = {int(coupon["id"]): coupon for coupon in bundle["coupons"]}
+    coupon_counter: Counter[str] = Counter()
+    for redemption in bundle["coupon_redemptions"]:
+        if (redemption.get("created_at") or now) < now - timedelta(days=30):
+            continue
+        coupon = coupon_by_id.get(int(redemption.get("coupon_id") or 0))
+        if coupon:
+            coupon_counter[str(coupon.get("code") or "Sin cupon")] += 1
+
+    lead_by_identity: dict[str, dict[str, Any]] = {}
+    for lead in bundle["skin_quiz_leads"]:
+        identity = _normalize_email(lead.get("email")) or _normalize_phone(lead.get("whatsapp")) or f"lead:{lead['id']}"
+        current = lead_by_identity.get(identity)
+        lead_created_at = lead.get("created_at") or now
+        if current is None or lead_created_at > (current.get("created_at") or now):
+            lead_by_identity[identity] = lead
+
+    source_counter: Counter[str] = Counter()
+    for order in realized_orders:
+        profile = _find_profile_for_identity(
+            email=order.get("customer_email"),
+            phone=order.get("customer_phone"),
+            by_email=by_email,
+            by_phone=by_phone,
+        )
+        lead_key = _normalize_email(order.get("customer_email")) or _normalize_phone(order.get("customer_phone"))
+        lead = lead_by_identity.get(lead_key) if lead_key else None
+        if lead and (lead.get("created_at") or now) > (order.get("created_at") or now):
+            lead = None
+        source_counter[_classify_order_origin(order=order, profile=profile, lead_before_order=lead)] += 1
+
+    top_source = source_counter.most_common(1)[0][0] if source_counter else "Directo"
+
+    answers = [
+        {
+            "id": "marketing_coupons_used",
+            "question": "Cuantos cupones se usaron?",
+            "answer": f"{context['coupons']['redemptions_30d']} redencion(es) en 30 dias.",
+            "detail": f"Descuento total entregado: {_format_currency(context['coupons']['discount_amount_30d'])}.",
+            "tone": "neutral",
+        },
+        {
+            "id": "marketing_coupon_conversion",
+            "question": "Que cupon convierte mejor?",
+            "answer": (
+                f"{coupon_counter.most_common(1)[0][0]} lidera con {coupon_counter.most_common(1)[0][1]} uso(s)."
+                if coupon_counter
+                else "Todavia no hay un cupon con traccion suficiente."
+            ),
+            "detail": "La lectura actual usa redenciones creadas al generar la orden, no clicks promocionales.",
+            "tone": "positive" if coupon_counter else "neutral",
+        },
+        {
+            "id": "marketing_origin",
+            "question": "De donde vienen las compras?",
+            "answer": f"El origen dominante hoy es {top_source.lower()}.",
+            "detail": "El origen se infiere con señales persistidas de lead, contacto y orden.",
+            "tone": "neutral",
+        },
+    ]
+
+    return {
+        "answers": answers,
+        "sources": _counter_to_ranked_items(source_counter, total=len(realized_orders)),
+        "coupons": _counter_to_ranked_items(coupon_counter, total=max(context["coupons"]["redemptions_30d"], 1)),
+    }
+
+
+def _build_funnel_analysis(context: dict[str, Any]) -> dict[str, Any]:
+    bundle = context["bundle"]
+    realized_orders = context["realized_orders"]
+    skin_quiz_completed = len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "skin_quiz_completed"]) or len(bundle["skin_quiz_leads"])
+    routine_orders = 0
+    for recommendation in _build_routine_builder_analysis(context)["routines"]:
+        routine_orders += int(recommendation["count"])
+    checkout_count = len(bundle["orders"])
+    purchase_count = len(realized_orders)
+
+    product_view_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "product_view"])
+    add_to_cart_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "add_to_cart"])
+    visits_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) in {"page_view", "session_started", "home_view"}])
+
+    raw_steps = [
+        ("visits", "Visitas", visits_count if visits_count > 0 else None, "measured" if visits_count > 0 else "unavailable"),
+        ("skin_quiz", "Skin Quiz", skin_quiz_completed if skin_quiz_completed > 0 else None, "measured" if skin_quiz_completed > 0 else "unavailable"),
+        ("routine", "Rutina", routine_orders if routine_orders > 0 else None, "proxy" if routine_orders > 0 else "unavailable"),
+        ("product", "Producto", product_view_count if product_view_count > 0 else None, "measured" if product_view_count > 0 else "unavailable"),
+        ("routine_builder", "Routine Builder", routine_orders if routine_orders > 0 else None, "proxy" if routine_orders > 0 else "unavailable"),
+        ("cart", "Carrito", add_to_cart_count if add_to_cart_count > 0 else None, "measured" if add_to_cart_count > 0 else "unavailable"),
+        ("checkout", "Checkout", checkout_count if checkout_count > 0 else None, "measured"),
+        ("purchase", "Compra", purchase_count if purchase_count > 0 else None, "measured" if purchase_count > 0 else "unavailable"),
+    ]
+
+    steps: list[dict[str, Any]] = []
+    previous_count: int | None = None
+    for step_id, label, count, measurement in raw_steps:
+        if previous_count is not None and count is not None and previous_count > 0:
+            conversion = round((count / previous_count) * 100, 1)
+            loss = max(previous_count - count, 0)
+        else:
+            conversion = None
+            loss = None
+        steps.append(
+            {
+                "id": step_id,
+                "label": label,
+                "count": count,
+                "displayValue": str(count) if count is not None else "Sin dato",
+                "conversionFromPrevious": conversion,
+                "lossFromPrevious": loss,
+                "measurement": measurement,
+            }
+        )
+        previous_count = count if count is not None else previous_count
+
+    funnel_insights = [
+        (
+            f"Checkout a compra: {_format_percent_precise((purchase_count / checkout_count) * 100)}."
+            if checkout_count > 0
+            else "Todavia no hay checkouts persistidos para medir cierre."
+        ),
+        (
+            f"Skin Quiz a rutina atribuida: {_format_percent_precise((routine_orders / skin_quiz_completed) * 100)}."
+            if skin_quiz_completed > 0 and routine_orders > 0
+            else "La capa media del embudo todavia depende de proxies, no de eventos completos."
+        ),
+        "Las etapas de visitas, producto y carrito se llenaran automaticamente cuando esos eventos se persistan en backend.",
+    ]
+
+    return {
+        "steps": steps,
+        "insights": funnel_insights,
+    }
+
+
+def _build_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
+    skin_quiz = _build_skin_quiz_analysis(context, now)
+    routine_builder = _build_routine_builder_analysis(context)
+    customer_answers, priority_customers = _build_customer_analysis(context)
+    marketing = _build_marketing_analysis(context, now)
+    funnel = _build_funnel_analysis(context)
+
+    measurement_notes = [
+        skin_quiz["measurement_note"],
+        routine_builder["measurement_note"],
+        "Origen de compra, embudo medio y abandono usan senales persistidas o proxies; no se fabrican datos inexistentes.",
+    ]
+
+    return {
+        "executive_periods": _build_executive_periods(context, now),
+        "skin_quiz_metrics": skin_quiz["metrics"],
+        "skin_quiz_answers": skin_quiz["answers"],
+        "skin_quiz_recommended_products": skin_quiz["recommended_products"],
+        "skin_quiz_purchased_products": skin_quiz["purchased_products"],
+        "routine_builder_metrics": routine_builder["metrics"],
+        "routine_builder_answers": routine_builder["answers"],
+        "routine_builder_routines": routine_builder["routines"],
+        "product_answers": _build_product_analysis(context, now),
+        "customer_answers": customer_answers,
+        "priority_customers": priority_customers,
+        "marketing_answers": marketing["answers"],
+        "marketing_sources": marketing["sources"],
+        "marketing_coupons": marketing["coupons"],
+        "funnel_steps": funnel["steps"],
+        "funnel_insights": funnel["insights"],
+        "measurement_notes": measurement_notes,
+    }
 
 
 def get_admin_intelligence_dashboard(db: Session) -> dict[str, Any]:
     now = _now_utc()
     bundle = _build_data_bundle(db)
     context = _build_context(bundle, now)
+    analysis = _build_analysis(context, now)
 
     return {
         "generated_at": context["generated_at"],
@@ -1576,11 +2670,12 @@ def get_admin_intelligence_dashboard(db: Session) -> dict[str, Any]:
         ],
         "ai_module": {
             "title": "Preguntale a Skin Hearten AI",
-            "description": "La arquitectura queda lista para conectar un modelo de IA despues. Hoy responde con reglas, contexto comercial y datos operativos del negocio.",
+            "description": "Responde con reglas, contexto comercial y senales persistidas. La capa queda lista para conectar OpenAI despues, pero hoy ya prioriza decisiones utiles.",
             "suggested_questions": _INTELLIGENCE_SUGGESTED_QUESTIONS,
             "provider": "rules",
             "open_ai_ready": True,
         },
+        "analysis": analysis,
     }
 
 
@@ -1590,12 +2685,117 @@ def ask_admin_intelligence_question(db: Session, question: str) -> dict[str, Any
     context = _build_context(_build_data_bundle(db), now)
     summary = _build_executive_summary(context)
     recommendations = _build_recommendations(context)
+    analysis = _build_analysis(context, now)
     customer_scores = context["customer_scores"]
     product_scores = context["product_scores"]
-    snapshots = _build_snapshots(context)
 
     supporting_facts: list[str] = []
     suggested_actions: list[str] = []
+
+    if any(keyword in normalized_question for keyword in ["por que", "bajaron", "ventas", "cayeron"]):
+        today_block = analysis["executive_periods"][0] if analysis["executive_periods"] else None
+        return {
+            "provider": "rules",
+            "open_ai_ready": True,
+            "answer": today_block["headline"] if today_block else summary["summary"],
+            "supporting_facts": today_block["details"] if today_block else summary["bullets"],
+            "suggested_actions": [
+                item["suggested_action"]
+                for item in recommendations
+                if item["priority"] in {"critical", "high"}
+            ][:3]
+            or [item["suggested_action"] for item in recommendations[:3]],
+            "suggested_questions": _INTELLIGENCE_SUGGESTED_QUESTIONS,
+        }
+
+    if any(keyword in normalized_question for keyword in ["contactar", "seguir", "follow up"]):
+        top_customer = customer_scores[0] if customer_scores else None
+        return {
+            "provider": "rules",
+            "open_ai_ready": True,
+            "answer": (
+                f"La mejor oportunidad inmediata es {top_customer['name']} con score de recompra {top_customer['repurchase_score']}/100."
+                if top_customer
+                else "Todavia no hay suficientes compras cobradas para priorizar contactos."
+            ),
+            "supporting_facts": top_customer["reasons"] if top_customer else summary["bullets"],
+            "suggested_actions": [
+                top_customer["suggested_action"],
+                "Priorizar WhatsApp en clientas con score alto y marketing aceptado.",
+            ]
+            if top_customer
+            else [item["suggested_action"] for item in recommendations[:2]],
+            "suggested_questions": _INTELLIGENCE_SUGGESTED_QUESTIONS,
+        }
+
+    if any(keyword in normalized_question for keyword in ["rutina", "routine builder"]):
+        top_routine = analysis["routine_builder_routines"][0] if analysis["routine_builder_routines"] else None
+        routine_value = next(
+            (item for item in analysis["routine_builder_answers"] if item["id"] == "routine_value"),
+            None,
+        )
+        return {
+            "provider": "rules",
+            "open_ai_ready": True,
+            "answer": (
+                f"La rutina con mejor salida hoy es {top_routine['label']} con {top_routine['count']} pedido(s) atribuidos."
+                if top_routine
+                else "Todavia no hay suficiente evidencia persistida para declarar una rutina ganadora."
+            ),
+            "supporting_facts": [
+                routine_value["answer"] if routine_value else analysis["measurement_notes"][1],
+                routine_value["detail"] if routine_value else "La atribucion se apoya en pedidos reales, no en aperturas del modal.",
+            ],
+            "suggested_actions": [
+                "Usar esa rutina como ancla comercial en quiz, PDP y seguimiento.",
+                "Comparar su ticket contra el flujo de producto unico antes de empujar mas trafico.",
+            ],
+            "suggested_questions": _INTELLIGENCE_SUGGESTED_QUESTIONS,
+        }
+
+    if any(keyword in normalized_question for keyword in ["promocionar", "promo", "impulsar"]):
+        promotable_product = next(
+            (
+                product
+                for product in product_scores
+                if product["inventory_score"] > 25 and product["intelligence_score"] >= 70
+            ),
+            product_scores[0] if product_scores else None,
+        )
+        return {
+            "provider": "rules",
+            "open_ai_ready": True,
+            "answer": (
+                f"Hoy conviene empujar {promotable_product['name']}."
+                if promotable_product
+                else "Todavia no hay suficiente catalogo o ventas para decidir que promocionar."
+            ),
+            "supporting_facts": [
+                f"Score comercial {promotable_product['intelligence_score']}/100.",
+                f"Margen {promotable_product['margin_percent']:.0f}% con stock {promotable_product['stock']} pieza(s).",
+                promotable_product["recommended_action"],
+            ]
+            if promotable_product
+            else summary["bullets"],
+            "suggested_actions": [
+                "Impulsarlo con narrativa editorial, no con descuento agresivo.",
+                "Acompanarlo con prueba social o resenas si la conversion todavia puede subir.",
+            ],
+            "suggested_questions": _INTELLIGENCE_SUGGESTED_QUESTIONS,
+        }
+
+    if any(keyword in normalized_question for keyword in ["quiz", "lead"]):
+        return {
+            "provider": "rules",
+            "open_ai_ready": True,
+            "answer": "El Skin Quiz ya deja una lectura comercial util, aunque todavia falta telemetria durable del inicio del flujo.",
+            "supporting_facts": [item["answer"] for item in analysis["skin_quiz_answers"][:4]],
+            "suggested_actions": [
+                "Contactar primero leads recientes con marketing aceptado.",
+                "Usar la rutina recomendada como ancla para cerrar venta.",
+            ],
+            "suggested_questions": _INTELLIGENCE_SUGGESTED_QUESTIONS,
+        }
 
     if any(keyword in normalized_question for keyword in ["recompra", "cliente", "customers", "crm"]):
         top_customer = customer_scores[0] if customer_scores else None

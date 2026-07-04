@@ -84,6 +84,69 @@ export type IntelligenceAiModule = {
   openAiReady: boolean;
 };
 
+export type IntelligenceStat = {
+  id: string;
+  label: string;
+  value: number | null;
+  displayValue: string;
+  helper: string | null;
+  isEstimated: boolean;
+  tone: InsightTone;
+};
+
+export type IntelligenceNarrativeBlock = {
+  id: string;
+  label: string;
+  headline: string;
+  details: string[];
+  tone: InsightTone;
+};
+
+export type IntelligenceQuestionAnswer = {
+  id: string;
+  question: string;
+  answer: string;
+  detail: string | null;
+  tone: InsightTone;
+};
+
+export type IntelligenceRankedItem = {
+  label: string;
+  count: number;
+  share: number | null;
+  helper: string | null;
+};
+
+export type IntelligenceFunnelStep = {
+  id: string;
+  label: string;
+  count: number | null;
+  displayValue: string;
+  conversionFromPrevious: number | null;
+  lossFromPrevious: number | null;
+  measurement: "measured" | "proxy" | "unavailable";
+};
+
+export type IntelligenceAnalysis = {
+  executivePeriods: IntelligenceNarrativeBlock[];
+  skinQuizMetrics: IntelligenceStat[];
+  skinQuizAnswers: IntelligenceQuestionAnswer[];
+  skinQuizRecommendedProducts: IntelligenceRankedItem[];
+  skinQuizPurchasedProducts: IntelligenceRankedItem[];
+  routineBuilderMetrics: IntelligenceStat[];
+  routineBuilderAnswers: IntelligenceQuestionAnswer[];
+  routineBuilderRoutines: IntelligenceRankedItem[];
+  productAnswers: IntelligenceQuestionAnswer[];
+  customerAnswers: IntelligenceQuestionAnswer[];
+  priorityCustomers: IntelligenceCustomerScore[];
+  marketingAnswers: IntelligenceQuestionAnswer[];
+  marketingSources: IntelligenceRankedItem[];
+  marketingCoupons: IntelligenceRankedItem[];
+  funnelSteps: IntelligenceFunnelStep[];
+  funnelInsights: string[];
+  measurementNotes: string[];
+};
+
 export type IntelligenceDashboard = {
   generatedAt: string;
   executiveSummary: IntelligenceExecutiveSummary;
@@ -93,6 +156,7 @@ export type IntelligenceDashboard = {
   customerScores: IntelligenceCustomerScore[];
   productScores: IntelligenceProductScore[];
   aiModule: IntelligenceAiModule;
+  analysis: IntelligenceAnalysis;
 };
 
 export type IntelligenceAskResponse = {
