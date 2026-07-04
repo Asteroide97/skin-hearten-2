@@ -1973,36 +1973,36 @@ def _build_skin_quiz_analysis(context: dict[str, Any], now: datetime) -> dict[st
             "id": "quiz_started",
             "label": "Iniciaron",
             "value": float(started_count) if started_count is not None else None,
-            "displayValue": str(started_count) if started_count is not None else "Sin telemetria",
+            "display_value": str(started_count) if started_count is not None else "Sin telemetria",
             "helper": "La tienda todavia no persiste aperturas ni arranques del quiz.",
-            "isEstimated": True,
+            "is_estimated": True,
             "tone": "warning",
         },
         {
             "id": "quiz_completed",
             "label": "Terminaron",
             "value": float(completed_count),
-            "displayValue": str(completed_count),
+            "display_value": str(completed_count),
             "helper": "Quizzes completados que quedaron persistidos en backend.",
-            "isEstimated": not bool(events),
+            "is_estimated": not bool(events),
             "tone": "neutral",
         },
         {
             "id": "quiz_leads",
             "label": "Dejaron lead",
             "value": float(lead_count),
-            "displayValue": str(lead_count),
+            "display_value": str(lead_count),
             "helper": "Leads capturados y sincronizados con FastAPI.",
-            "isEstimated": False,
+            "is_estimated": False,
             "tone": "positive" if lead_count > 0 else "neutral",
         },
         {
             "id": "quiz_conversion",
             "label": "Conversion",
             "value": completion_rate,
-            "displayValue": _format_percent_precise(completion_rate) if completion_rate is not None else "Sin base",
+            "display_value": _format_percent_precise(completion_rate) if completion_rate is not None else "Sin base",
             "helper": "Se activara cuando exista telemetria persistida de inicios.",
-            "isEstimated": True,
+            "is_estimated": True,
             "tone": "neutral",
         },
     ]
@@ -2128,36 +2128,36 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
             "id": "routine_modal_opened",
             "label": "Modal abierto",
             "value": None,
-            "displayValue": "Sin telemetria",
+            "display_value": "Sin telemetria",
             "helper": "La apertura del modal todavia no se guarda de forma persistente.",
-            "isEstimated": True,
+            "is_estimated": True,
             "tone": "warning",
         },
         {
             "id": "routine_full_orders",
             "label": "Rutina completa",
             "value": float(full_routine_orders),
-            "displayValue": str(full_routine_orders),
+            "display_value": str(full_routine_orders),
             "helper": "Pedidos con 3 o mas pasos de una misma rutina.",
-            "isEstimated": True,
+            "is_estimated": True,
             "tone": "positive" if full_routine_orders > 0 else "neutral",
         },
         {
             "id": "routine_single_orders",
             "label": "Solo un producto",
             "value": float(single_product_orders),
-            "displayValue": str(single_product_orders),
+            "display_value": str(single_product_orders),
             "helper": "Pedidos donde solo entro el producto principal de una rutina.",
-            "isEstimated": True,
+            "is_estimated": True,
             "tone": "neutral",
         },
         {
             "id": "routine_ticket_lift",
             "label": "Lift en ticket",
             "value": ticket_lift,
-            "displayValue": _format_percent_precise(ticket_lift) if ticket_lift is not None else "Sin base",
+            "display_value": _format_percent_precise(ticket_lift) if ticket_lift is not None else "Sin base",
             "helper": "Comparativo entre pedido de rutina completa vs producto unico.",
-            "isEstimated": True,
+            "is_estimated": True,
             "tone": "positive" if ticket_lift and ticket_lift > 0 else "neutral",
         },
     ]
@@ -2331,7 +2331,7 @@ def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict
                 else "Sin costos suficientes para comparar."
             ),
             "detail": (
-                f"Margen {highest_margin['marginPercent']:.0f}% y accion sugerida: {highest_margin['recommended_action']}"
+                f"Margen {highest_margin['margin_percent']:.0f}% y accion sugerida: {highest_margin['recommended_action']}"
                 if highest_margin
                 else None
             ),
@@ -2341,8 +2341,8 @@ def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict
             "id": "product_reviews",
             "question": "Cual concentra mas resenas?",
             "answer": (
-                f"{most_reviewed['name']} con {most_reviewed['reviewCount']} resena(s) y rating {most_reviewed['averageRating']:.1f}/5."
-                if most_reviewed and most_reviewed["reviewCount"] > 0
+                f"{most_reviewed['name']} con {most_reviewed['review_count']} resena(s) y rating {most_reviewed['average_rating']:.1f}/5."
+                if most_reviewed and most_reviewed["review_count"] > 0
                 else "Aun no hay resenas suficientes para una lectura fuerte."
             ),
             "detail": "Las resenas aprobadas sostienen confianza y conversion." if most_reviewed else None,
@@ -2589,9 +2589,9 @@ def _build_funnel_analysis(context: dict[str, Any]) -> dict[str, Any]:
                 "id": step_id,
                 "label": label,
                 "count": count,
-                "displayValue": str(count) if count is not None else "Sin dato",
-                "conversionFromPrevious": conversion,
-                "lossFromPrevious": loss,
+                "display_value": str(count) if count is not None else "Sin dato",
+                "conversion_from_previous": conversion,
+                "loss_from_previous": loss,
                 "measurement": measurement,
             }
         )
