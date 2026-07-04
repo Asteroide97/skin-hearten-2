@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 InsightTone = Literal["neutral", "positive", "warning", "critical"]
 InsightPriority = Literal["low", "medium", "high", "critical"]
+InsightConfidence = Literal["low", "medium", "high"]
 
 
 class IntelligenceExecutiveSummaryRead(BaseModel):
@@ -46,6 +47,8 @@ class IntelligenceRecommendationRead(BaseModel):
     impact_label: str = Field(serialization_alias="impactLabel")
     impact_value: str = Field(serialization_alias="impactValue")
     suggested_action: str = Field(serialization_alias="suggestedAction")
+    evidence: str | None = None
+    confidence: InsightConfidence | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -154,7 +157,9 @@ class IntelligenceFunnelStepRead(BaseModel):
     display_value: str = Field(serialization_alias="displayValue")
     conversion_from_previous: float | None = Field(default=None, serialization_alias="conversionFromPrevious")
     loss_from_previous: int | None = Field(default=None, serialization_alias="lossFromPrevious")
-    measurement: Literal["measured", "proxy", "unavailable"] = "measured"
+    status: Literal["measured", "proxy", "unavailable"] = "measured"
+    previous_period_count: int | None = Field(default=None, serialization_alias="previousPeriodCount")
+    delta_vs_previous_7d: float | None = Field(default=None, serialization_alias="deltaVsPrevious7d")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -177,14 +182,21 @@ class IntelligenceAnalysisRead(BaseModel):
         serialization_alias="routineBuilderRoutines"
     )
     product_answers: list[IntelligenceQuestionAnswerRead] = Field(serialization_alias="productAnswers")
+    product_top_viewed: list[IntelligenceRankedItemRead] = Field(serialization_alias="productTopViewed")
+    product_top_converted: list[IntelligenceRankedItemRead] = Field(serialization_alias="productTopConverted")
+    product_top_abandoned: list[IntelligenceRankedItemRead] = Field(serialization_alias="productTopAbandoned")
     customer_answers: list[IntelligenceQuestionAnswerRead] = Field(serialization_alias="customerAnswers")
     priority_customers: list[IntelligenceCustomerScoreRead] = Field(serialization_alias="priorityCustomers")
     marketing_answers: list[IntelligenceQuestionAnswerRead] = Field(serialization_alias="marketingAnswers")
     marketing_sources: list[IntelligenceRankedItemRead] = Field(serialization_alias="marketingSources")
     marketing_coupons: list[IntelligenceRankedItemRead] = Field(serialization_alias="marketingCoupons")
+    search_top_terms: list[IntelligenceRankedItemRead] = Field(serialization_alias="searchTopTerms")
+    search_no_result_terms: list[IntelligenceRankedItemRead] = Field(serialization_alias="searchNoResultTerms")
+    search_converting_terms: list[IntelligenceRankedItemRead] = Field(serialization_alias="searchConvertingTerms")
     funnel_steps: list[IntelligenceFunnelStepRead] = Field(serialization_alias="funnelSteps")
     funnel_insights: list[str] = Field(serialization_alias="funnelInsights")
     measurement_notes: list[str] = Field(serialization_alias="measurementNotes")
+    growth_note: str | None = Field(default=None, serialization_alias="growthNote")
 
     model_config = ConfigDict(populate_by_name=True)
 

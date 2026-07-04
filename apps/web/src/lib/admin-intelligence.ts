@@ -1,5 +1,6 @@
 export type InsightTone = "neutral" | "positive" | "warning" | "critical";
 export type InsightPriority = "low" | "medium" | "high" | "critical";
+export type InsightConfidence = "low" | "medium" | "high";
 
 export type IntelligenceExecutiveSummary = {
   headline: string;
@@ -32,6 +33,8 @@ export type IntelligenceRecommendation = {
   impactLabel: string;
   impactValue: string;
   suggestedAction: string;
+  evidence: string | null;
+  confidence: InsightConfidence | null;
 };
 
 export type IntelligenceCustomerScore = {
@@ -124,7 +127,9 @@ export type IntelligenceFunnelStep = {
   displayValue: string;
   conversionFromPrevious: number | null;
   lossFromPrevious: number | null;
-  measurement: "measured" | "proxy" | "unavailable";
+  status: "measured" | "proxy" | "unavailable";
+  previousPeriodCount: number | null;
+  deltaVsPrevious7d: number | null;
 };
 
 export type IntelligenceAnalysis = {
@@ -137,14 +142,21 @@ export type IntelligenceAnalysis = {
   routineBuilderAnswers: IntelligenceQuestionAnswer[];
   routineBuilderRoutines: IntelligenceRankedItem[];
   productAnswers: IntelligenceQuestionAnswer[];
+  productTopViewed: IntelligenceRankedItem[];
+  productTopConverted: IntelligenceRankedItem[];
+  productTopAbandoned: IntelligenceRankedItem[];
   customerAnswers: IntelligenceQuestionAnswer[];
   priorityCustomers: IntelligenceCustomerScore[];
   marketingAnswers: IntelligenceQuestionAnswer[];
   marketingSources: IntelligenceRankedItem[];
   marketingCoupons: IntelligenceRankedItem[];
+  searchTopTerms: IntelligenceRankedItem[];
+  searchNoResultTerms: IntelligenceRankedItem[];
+  searchConvertingTerms: IntelligenceRankedItem[];
   funnelSteps: IntelligenceFunnelStep[];
   funnelInsights: string[];
   measurementNotes: string[];
+  growthNote: string | null;
 };
 
 export type IntelligenceDashboard = {

@@ -1944,6 +1944,147 @@ def _classify_analytics_session_origin(events: list[dict[str, Any]]) -> str:
     return "Directo"
 
 
+_GROWTH_MIN_EVENTS = 10
+_ANALYTICS_LOOKBACK_DAYS = 30
+_FUNNEL_STEP_DEFINITIONS = [
+    ("site_visit", "Visitas"),
+    ("search_submitted", "Busqueda"),
+    ("skin_quiz_started", "Skin Quiz"),
+    ("skin_quiz_completed", "Quiz completado"),
+    ("product_viewed", "Producto"),
+    ("routine_builder_opened", "Routine Builder"),
+    ("routine_full_added", "Rutina completa"),
+    ("routine_single_added", "Solo producto"),
+    ("cart_viewed", "Carrito"),
+    ("checkout_started", "Checkout"),
+    ("checkout_completed", "Compra"),
+]
+
+
+def _get_analytics_event_created_at(event: dict[str, Any]) -> datetime | None:
+    return _normalize_datetime(event.get("created_at"))
+
+
+def _get_analytics_session_key(event: dict[str, Any]) -> str:
+    session_id = str(event.get("session_id") or "").strip()
+    if session_id:
+        return f"session:{session_id}"
+    return f"event:{event.get('id') or 'unknown'}"
+
+
+def _build_analytics_session_timelines(
+    analytics_events: list[dict[str, Any]],
+    *,
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    timelines: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for event in analytics_events:
+        created_at = _get_analytics_event_created_at(event)
+        if created_at is None:
+            continue
+        if since and created_at < since:
+            continue
+        if until and created_at >= until:
+            continue
+        timelines[_get_analytics_session_key(event)].append(event)
+
+    for events in timelines.values():
+        events.sort(
+            key=lambda item: (
+                _get_analytics_event_created_at(item) or datetime.min.replace(tzinfo=timezone.utc),
+                int(item.get("id") or 0),
+            )
+        )
+    return timelines
+
+
+def _build_order_items_by_order_id(bundle: dict[str, Any]) -> dict[int, list[dict[str, Any]]]:
+    items_by_order_id: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for item in bundle["order_items"]:
+        items_by_order_id[int(item["order_id"])].append(item)
+    return items_by_order_id
+
+
+def _build_order_total_map(bundle: dict[str, Any]) -> dict[int, float]:
+    return {
+        int(order["id"]): _to_float(order.get("grand_total"))
+        for order in bundle["orders"]
+        if int(order.get("id") or 0) > 0
+    }
+
+
+def _build_order_product_ids_map(bundle: dict[str, Any]) -> dict[int, set[int]]:
+    order_product_ids: dict[int, set[int]] = defaultdict(set)
+    for item in bundle["order_items"]:
+        order_id = int(item.get("order_id") or 0)
+        product_id = int(item.get("product_id") or 0)
+        if order_id > 0 and product_id > 0:
+            order_product_ids[order_id].add(product_id)
+    return order_product_ids
+
+
+def _normalize_search_query(value: Any) -> str | None:
+    normalized = _normalize_text(str(value or ""))
+    return normalized.lower() if normalized else None
+
+
+def _search_metadata_has_no_results(metadata: dict[str, Any]) -> bool:
+    if metadata.get("no_results") is True or metadata.get("has_results") is False:
+        return True
+
+    results_count = metadata.get("results_count")
+    if isinstance(results_count, (int, float)):
+        return int(results_count) == 0
+
+    if isinstance(results_count, str) and results_count.isdigit():
+        return int(results_count) == 0
+
+    return False
+
+
+def _build_growth_ranked_item(
+    *,
+    label: str,
+    count: int,
+    share: float | None = None,
+    helper: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "label": label,
+        "count": int(count),
+        "share": round(float(share), 1) if share is not None else None,
+        "helper": helper,
+    }
+
+
+def _build_growth_recommendation(
+    *,
+    id: str,
+    priority: str,
+    title: str,
+    explanation: str,
+    evidence: str,
+    recommended_action: str,
+    confidence: str,
+    source: str,
+    impact_label: str,
+    impact_value: str,
+) -> dict[str, Any]:
+    return {
+        "id": id,
+        "title": title,
+        "description": explanation,
+        "priority": priority,
+        "source": source,
+        "impact_label": impact_label,
+        "impact_value": impact_value,
+        "suggested_action": recommended_action,
+        "evidence": evidence,
+        "confidence": confidence,
+    }
+
+
 def _match_routine_for_order(
     product_ids: set[int],
     *,
@@ -2218,18 +2359,26 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
     analytics_events = bundle["analytics_events"]
     routines, routine_product_ids = _build_routine_maps(bundle)
     realized_orders = context["realized_orders"]
-    items_by_order_id: dict[int, list[dict[str, Any]]] = defaultdict(list)
-    for item in bundle["order_items"]:
-        items_by_order_id[int(item["order_id"])].append(item)
+    items_by_order_id = _build_order_items_by_order_id(bundle)
+    order_total_by_id = _build_order_total_map(bundle)
+
+    analytics_since = context["generated_at"] - timedelta(days=_ANALYTICS_LOOKBACK_DAYS)
+    timelines = _build_analytics_session_timelines(analytics_events, since=analytics_since)
 
     full_routine_orders = 0
     single_product_orders = 0
     full_routine_value = 0.0
     single_product_value = 0.0
     routine_counter: Counter[str] = Counter()
-    routine_opened_events = [event for event in analytics_events if _get_analytics_event_name(event) == "routine_builder_opened"]
-    routine_full_added_events = [event for event in analytics_events if _get_analytics_event_name(event) == "routine_full_added"]
-    routine_single_added_events = [event for event in analytics_events if _get_analytics_event_name(event) == "routine_single_added"]
+    routine_opened_events = [
+        event for event in analytics_events if _get_analytics_event_name(event) == "routine_builder_opened"
+    ]
+    routine_full_added_events = [
+        event for event in analytics_events if _get_analytics_event_name(event) == "routine_full_added"
+    ]
+    routine_single_added_events = [
+        event for event in analytics_events if _get_analytics_event_name(event) == "routine_single_added"
+    ]
     telemetry_routine_counter: Counter[str] = Counter()
 
     for order in realized_orders:
@@ -2255,19 +2404,88 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
             single_product_orders += 1
             single_product_value = round(single_product_value + order_total, 2)
 
-    for event in routine_full_added_events:
-        metadata = _get_analytics_event_metadata(event)
-        routine_name = str(metadata.get("routine_name") or "").strip()
-        if routine_name:
+    opened_sessions = 0
+    full_routine_count = 0
+    single_product_count = 0
+    routine_checkout_sessions = 0
+    measured_ticket_totals: list[float] = []
+
+    for session_events in timelines.values():
+        opened = False
+        full_added = False
+        single_added = False
+        routine_anchor_at: datetime | None = None
+        session_routine_names: set[str] = set()
+
+        for event in session_events:
+            event_name = _get_analytics_event_name(event)
+            event_created_at = _get_analytics_event_created_at(event)
+            metadata = _get_analytics_event_metadata(event)
+
+            if event_name == "routine_builder_opened":
+                opened = True
+                routine_anchor_at = routine_anchor_at or event_created_at
+            elif event_name == "routine_full_added":
+                full_added = True
+                routine_anchor_at = routine_anchor_at or event_created_at
+                routine_name = str(metadata.get("routine_name") or "").strip()
+                if routine_name:
+                    session_routine_names.add(routine_name)
+            elif event_name == "routine_single_added":
+                single_added = True
+                routine_anchor_at = routine_anchor_at or event_created_at
+                routine_name = str(metadata.get("routine_name") or "").strip()
+                if routine_name:
+                    session_routine_names.add(routine_name)
+
+        if opened:
+            opened_sessions += 1
+        if full_added:
+            full_routine_count += 1
+        if single_added:
+            single_product_count += 1
+        for routine_name in session_routine_names:
             telemetry_routine_counter[routine_name] += 1
 
-    full_routine_count = len(routine_full_added_events) if routine_full_added_events else full_routine_orders
-    single_product_count = len(routine_single_added_events) if routine_single_added_events else single_product_orders
-    modal_opened_count = len(routine_opened_events) if routine_opened_events else None
+        if not routine_anchor_at:
+            continue
+
+        checkout_order_ids = {
+            int(event.get("order_id") or 0)
+            for event in session_events
+            if _get_analytics_event_name(event) == "checkout_completed"
+            and (_get_analytics_event_created_at(event) or routine_anchor_at) >= routine_anchor_at
+            and int(event.get("order_id") or 0) > 0
+        }
+        if checkout_order_ids:
+            routine_checkout_sessions += 1
+            for order_id in checkout_order_ids:
+                order_total = order_total_by_id.get(order_id)
+                if order_total is not None:
+                    measured_ticket_totals.append(order_total)
+
+    modal_opened_count = opened_sessions if opened_sessions > 0 else None
     ranked_routines = telemetry_routine_counter if telemetry_routine_counter else routine_counter
 
     average_full_routine_value = round(full_routine_value / full_routine_orders, 2) if full_routine_orders else 0.0
     average_single_product_value = round(single_product_value / single_product_orders, 2) if single_product_orders else 0.0
+    full_rate = round((full_routine_count / opened_sessions) * 100, 1) if opened_sessions > 0 else None
+    single_rate = round((single_product_count / opened_sessions) * 100, 1) if opened_sessions > 0 else None
+    checkout_rate = round((routine_checkout_sessions / opened_sessions) * 100, 1) if opened_sessions > 0 else None
+    measured_average_ticket = round(sum(measured_ticket_totals) / len(measured_ticket_totals), 2) if measured_ticket_totals else None
+    proxy_average_ticket = (
+        round((full_routine_value + single_product_value) / (full_routine_orders + single_product_orders), 2)
+        if (full_routine_orders + single_product_orders) > 0
+        else None
+    )
+    average_ticket = measured_average_ticket if measured_average_ticket is not None else proxy_average_ticket
+    average_ticket_status = (
+        "measured"
+        if measured_average_ticket is not None
+        else "proxy"
+        if proxy_average_ticket is not None
+        else "unavailable"
+    )
     ticket_lift = (
         round(((average_full_routine_value - average_single_product_value) / average_single_product_value) * 100, 1)
         if average_full_routine_value > 0 and average_single_product_value > 0
@@ -2294,7 +2512,9 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
             "value": float(full_routine_count),
             "display_value": str(full_routine_count),
             "helper": (
-                "Clicks reales en Agregar rutina completa."
+                f"{_format_percent_precise(full_rate)} de las aperturas terminan en rutina completa."
+                if full_rate is not None
+                else "Clicks reales en Agregar rutina completa."
                 if routine_full_added_events
                 else "Pedidos con 3 o mas pasos de una misma rutina."
             ),
@@ -2307,7 +2527,9 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
             "value": float(single_product_count),
             "display_value": str(single_product_count),
             "helper": (
-                "Clicks reales en Continuar solo con este producto."
+                f"{_format_percent_precise(single_rate)} de las aperturas prefieren producto unico."
+                if single_rate is not None
+                else "Clicks reales en Continuar solo con este producto."
                 if routine_single_added_events
                 else "Pedidos donde solo entro el producto principal de una rutina."
             ),
@@ -2315,13 +2537,17 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
             "tone": "neutral",
         },
         {
-            "id": "routine_ticket_lift",
-            "label": "Lift en ticket",
-            "value": ticket_lift,
-            "display_value": _format_percent_precise(ticket_lift) if ticket_lift is not None else "Sin base",
-            "helper": "Comparativo entre pedido de rutina completa vs producto unico.",
-            "is_estimated": True,
-            "tone": "positive" if ticket_lift and ticket_lift > 0 else "neutral",
+            "id": "routine_checkout_completed",
+            "label": "Llega a compra",
+            "value": float(routine_checkout_sessions),
+            "display_value": str(routine_checkout_sessions),
+            "helper": (
+                f"{_format_percent_precise(checkout_rate)} de las aperturas llegan a checkout completado."
+                if checkout_rate is not None
+                else "Sesiones con rutina que lograron checkout completado."
+            ),
+            "is_estimated": average_ticket_status != "measured",
+            "tone": "positive" if routine_checkout_sessions > 0 else "neutral",
         },
     ]
 
@@ -2343,11 +2569,17 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
             "answer": (
                 f"Rutina completa {_format_currency(average_full_routine_value)} vs producto unico {_format_currency(average_single_product_value)}."
                 if average_full_routine_value or average_single_product_value
+                else f"Ticket promedio del flujo con rutina: {_format_currency(average_ticket)}."
+                if average_ticket is not None
                 else "Todavia no hay suficiente volumen para comparar tickets por rutina."
             ),
             "detail": (
                 f"Las rutinas elevan el ticket {abs(ticket_lift):.1f}%."
                 if ticket_lift is not None
+                else "Ticket unido directamente a order_id desde checkout_completed."
+                if average_ticket_status == "measured"
+                else "Ticket inferido por pedidos atribuidos a rutina."
+                if average_ticket_status == "proxy"
                 else "Hace falta mas historial para medir el efecto sobre ticket."
             ),
             "tone": "positive" if ticket_lift and ticket_lift > 0 else "neutral",
@@ -2356,40 +2588,52 @@ def _build_routine_builder_analysis(context: dict[str, Any]) -> dict[str, Any]:
             "id": "routine_measurement",
             "question": "Que parte falta medir mejor?",
             "answer": (
-                "Ya hay telemetria de aperturas y decisiones dentro del modal."
-                if routine_opened_events or routine_full_added_events or routine_single_added_events
+                "Ya hay telemetria de aperturas, decision de rutina y cierre por sesion."
+                if opened_sessions or full_routine_count or single_product_count
                 else "Aun no existe telemetria persistida de aperturas o agregado de rutina completa."
             ),
             "detail": (
-                "El lift en ticket sigue apoyandose en pedidos atribuidos para medir valor posterior."
-                if routine_opened_events or routine_full_added_events or routine_single_added_events
+                "El ticket promedio ya puede unirse con order_id."
+                if average_ticket_status == "measured"
+                else "El valor economico sigue apoyandose en pedidos atribuidos para medir el resultado final."
+                if average_ticket_status == "proxy"
                 else "Hoy la lectura se apoya en pedidos atribuidos a secuencias de rutina, no en clics previos."
             ),
-            "tone": "neutral" if routine_opened_events or routine_full_added_events or routine_single_added_events else "warning",
+            "tone": "neutral" if opened_sessions or full_routine_count or single_product_count else "warning",
         },
     ]
 
     return {
         "metrics": metrics,
         "answers": answers,
-        "routines": _counter_to_ranked_items(ranked_routines, total=max(full_routine_count, 1)),
+        "routines": _counter_to_ranked_items(
+            ranked_routines,
+            total=max(full_routine_count + single_product_count, 1),
+        ),
         "measurement_note": (
-            "Routine Builder ya usa aperturas y decisiones reales dentro del modal; el valor economico sigue apoyandose en pedidos atribuidos."
-            if routine_opened_events or routine_full_added_events or routine_single_added_events
+            "Routine Builder ya mide aperturas, decisiones y checkout por sesion; el ticket usa order_id cuando existe y proxy honesto cuando no."
+            if opened_sessions or full_routine_count or single_product_count
             else "Routine Builder se interpreta con atribucion por pedidos, no con aperturas del modal."
         ),
         "full_routine_orders": full_routine_orders,
         "single_product_orders": single_product_orders,
+        "full_rate": full_rate,
+        "single_rate": single_rate,
+        "checkout_sessions": routine_checkout_sessions,
+        "checkout_rate": checkout_rate,
+        "average_ticket": average_ticket,
+        "average_ticket_status": average_ticket_status,
     }
 
 
-def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict[str, Any]]:
+def _build_product_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
     bundle = context["bundle"]
     product_scores = context["product_scores"]
     analytics_events = bundle["analytics_events"]
-    items_by_order_id: dict[int, list[dict[str, Any]]] = defaultdict(list)
-    for item in bundle["order_items"]:
-        items_by_order_id[int(item["order_id"])].append(item)
+    items_by_order_id = _build_order_items_by_order_id(bundle)
+    order_product_ids = _build_order_product_ids_map(bundle)
+    analytics_since = now - timedelta(days=_ANALYTICS_LOOKBACK_DAYS)
+    timelines = _build_analytics_session_timelines(analytics_events, since=analytics_since)
 
     current_units: Counter[int] = Counter()
     previous_units: Counter[int] = Counter()
@@ -2419,6 +2663,11 @@ def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict
                 previous_revenue[product_id] += line_revenue
 
     product_by_id = {int(product["product_id"]): product for product in product_scores}
+    product_name_by_id = {
+        int(product["id"]): str(product.get("name") or "Producto")
+        for product in bundle["products"]
+        if int(product.get("id") or 0) > 0
+    }
     most_sold = max(product_scores, key=lambda item: (int(item["units_sold"]), float(item["revenue"])), default=None)
     highest_margin = max(product_scores, key=lambda item: float(item.get("_gross_profit", 0)), default=None)
     most_reviewed = max(product_scores, key=lambda item: (int(item["review_count"]), float(item["average_rating"])), default=None)
@@ -2437,36 +2686,112 @@ def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict
     biggest_growth = max(growth_candidates, key=lambda item: (item[0], item[1]), default=None)
     biggest_drop = min(drop_candidates, key=lambda item: (item[0], item[1]), default=None)
 
-    product_view_events = Counter()
-    analytics_product_views = [event for event in analytics_events if _get_analytics_event_name(event) == "product_viewed"]
-    if analytics_product_views:
-        for event in analytics_product_views:
-            metadata = _get_analytics_event_metadata(event)
-            product_name = str(metadata.get("product_name") or "").strip()
-            if not product_name:
-                product_id = int(event.get("product_id") or 0)
-                product_name = str(product_by_id.get(product_id, {}).get("name") or "Producto")
-            product_view_events[product_name] += 1
-    else:
-        for event in bundle["crm_events"]:
-            if str(event.get("event_type")) != "product_view":
+    viewed_sessions: Counter[int] = Counter()
+    converted_sessions: Counter[int] = Counter()
+    abandoned_sessions: Counter[int] = Counter()
+    progressed_sessions: Counter[int] = Counter()
+
+    for session_events in timelines.values():
+        first_view_at_by_product: dict[int, datetime] = {}
+        checkout_orders_after_view: list[tuple[datetime, int]] = []
+        progress_events: list[datetime] = []
+
+        for event in session_events:
+            event_name = _get_analytics_event_name(event)
+            event_created_at = _get_analytics_event_created_at(event)
+            if event_created_at is None:
                 continue
-            payload = event.get("payload_json") or {}
-            product_name = str(payload.get("product_name") or payload.get("productName") or "Producto")
-            product_view_events[product_name] += 1
+            if event_name == "product_viewed":
+                product_id = int(event.get("product_id") or 0)
+                if product_id > 0 and product_id not in first_view_at_by_product:
+                    first_view_at_by_product[product_id] = event_created_at
+            elif event_name in {"cart_viewed", "checkout_started", "checkout_completed"}:
+                progress_events.append(event_created_at)
+                if event_name == "checkout_completed" and int(event.get("order_id") or 0) > 0:
+                    checkout_orders_after_view.append((event_created_at, int(event.get("order_id") or 0)))
 
-    non_realized_product_counter = Counter()
-    for order in bundle["orders"]:
-        payment = context["payments_by_order_id"].get(int(order["id"]))
-        if _is_realized_order(order, payment):
-            continue
-        for item in items_by_order_id.get(int(order["id"]), []):
-            non_realized_product_counter[str(item.get("product_name") or "Producto")] += int(item.get("quantity") or 0)
+        for product_id, viewed_at in first_view_at_by_product.items():
+            viewed_sessions[product_id] += 1
+            has_progress = any(event_time >= viewed_at for event_time in progress_events)
+            if has_progress:
+                progressed_sessions[product_id] += 1
 
-    most_viewed = product_view_events.most_common(1)[0] if product_view_events else None
-    highest_abandonment = non_realized_product_counter.most_common(1)[0] if non_realized_product_counter else None
+            matched_checkout = any(
+                checkout_at >= viewed_at and product_id in order_product_ids.get(order_id, set())
+                for checkout_at, order_id in checkout_orders_after_view
+            )
+            if matched_checkout:
+                converted_sessions[product_id] += 1
+            elif not has_progress:
+                abandoned_sessions[product_id] += 1
 
-    return [
+    analytics_product_views = any(
+        _get_analytics_event_name(event) == "product_viewed" for event in analytics_events
+    )
+    top_viewed_items = sorted(
+        viewed_sessions.items(),
+        key=lambda item: (
+            -item[1],
+            -converted_sessions.get(item[0], 0),
+            product_name_by_id.get(item[0], "Producto"),
+        ),
+    )[:10]
+    top_converted_items = sorted(
+        converted_sessions.items(),
+        key=lambda item: (
+            -item[1],
+            -round((item[1] / viewed_sessions.get(item[0], 1)) * 100, 1),
+            product_name_by_id.get(item[0], "Producto"),
+        ),
+    )[:10]
+    top_abandoned_items = sorted(
+        abandoned_sessions.items(),
+        key=lambda item: (
+            -item[1],
+            -round((item[1] / viewed_sessions.get(item[0], 1)) * 100, 1),
+            product_name_by_id.get(item[0], "Producto"),
+        ),
+    )[:10]
+
+    top_viewed = [
+        _build_growth_ranked_item(
+            label=product_name_by_id.get(product_id, str(product_by_id.get(product_id, {}).get("name") or "Producto")),
+            count=count,
+            share=(converted_sessions.get(product_id, 0) / count) * 100 if count > 0 else None,
+            helper=(
+                f"{converted_sessions.get(product_id, 0)} sesion(es) terminaron en compra y {abandoned_sessions.get(product_id, 0)} se cortaron antes de carrito o checkout."
+            ),
+        )
+        for product_id, count in top_viewed_items
+    ]
+    top_converted = [
+        _build_growth_ranked_item(
+            label=product_name_by_id.get(product_id, str(product_by_id.get(product_id, {}).get("name") or "Producto")),
+            count=count,
+            share=(count / viewed_sessions.get(product_id, 1)) * 100 if viewed_sessions.get(product_id, 0) > 0 else None,
+            helper=(
+                f"{viewed_sessions.get(product_id, 0)} sesion(es) lo vieron y {progressed_sessions.get(product_id, 0)} avanzaron a carrito, checkout o compra."
+            ),
+        )
+        for product_id, count in top_converted_items
+    ]
+    top_abandoned = [
+        _build_growth_ranked_item(
+            label=product_name_by_id.get(product_id, str(product_by_id.get(product_id, {}).get("name") or "Producto")),
+            count=count,
+            share=(count / viewed_sessions.get(product_id, 1)) * 100 if viewed_sessions.get(product_id, 0) > 0 else None,
+            helper=(
+                f"{viewed_sessions.get(product_id, 0)} sesion(es) lo vieron, pero no siguieron a carrito ni checkout."
+            ),
+        )
+        for product_id, count in top_abandoned_items
+    ]
+
+    most_viewed = top_viewed[0] if top_viewed else None
+    most_converted = top_converted[0] if top_converted else None
+    highest_abandonment = top_abandoned[0] if top_abandoned else None
+
+    answers = [
         {
             "id": "product_best_seller",
             "question": "Cual es el producto mas vendido?",
@@ -2538,25 +2863,60 @@ def _build_product_analysis(context: dict[str, Any], now: datetime) -> list[dict
             "id": "product_views",
             "question": "Cual es el mas visto?",
             "answer": (
-                f"{most_viewed[0]} con {most_viewed[1]} vista(s) persistidas."
+                f"{most_viewed['label']} concentra {most_viewed['count']} sesion(es) de producto."
                 if most_viewed
                 else "Todavia no existe telemetria persistida de vistas de producto."
             ),
-            "detail": "La lectura se activara automaticamente si esos eventos empiezan a llegar al backend.",
+            "detail": (
+                f"Su conversion observada es de {_format_percent_precise(most_viewed['share'])}."
+                if most_viewed and most_viewed["share"] is not None
+                else "La lectura se activara automaticamente si esos eventos empiezan a llegar al backend."
+            ),
             "tone": "warning" if not most_viewed else "neutral",
+        },
+        {
+            "id": "product_checkout",
+            "question": "Que producto convierte mejor desde la vista?",
+            "answer": (
+                f"{most_converted['label']} ya suma {most_converted['count']} compra(s) ligadas a sesiones que lo vieron."
+                if most_converted
+                else "Todavia no hay suficientes sesiones con compra para medir conversion por producto."
+            ),
+            "detail": (
+                f"Convierte {_format_percent_precise(most_converted['share'])} de sus vistas observadas."
+                if most_converted and most_converted["share"] is not None
+                else "Hace falta mas union directa entre vista y checkout para elevar la confianza."
+            ),
+            "tone": "positive" if most_converted else "neutral",
         },
         {
             "id": "product_abandonment",
             "question": "Cual tiene mayor abandono?",
             "answer": (
-                f"{highest_abandonment[0]} aparece en {highest_abandonment[1]} unidad(es) de pedidos no cobrados."
+                f"{highest_abandonment['label']} pierde {highest_abandonment['count']} sesion(es) despues de la vista."
                 if highest_abandonment
-                else "No hay abandono medible en ordenes pendientes o fallidas."
+                else "No hay abandono medible por sesion despues de la vista."
             ),
-            "detail": "Se calcula con pedidos no realizados, no con vistas o clicks.",
+            "detail": (
+                f"El abandono observado es de {_format_percent_precise(highest_abandonment['share'])}."
+                if highest_abandonment and highest_abandonment["share"] is not None
+                else "Se calcula solo cuando existe vista de producto persistida."
+            ),
             "tone": "warning" if highest_abandonment else "neutral",
         },
     ]
+
+    if not analytics_product_views:
+        for answer in answers:
+            if answer["id"] in {"product_views", "product_checkout", "product_abandonment"}:
+                answer["tone"] = "warning"
+
+    return {
+        "answers": answers,
+        "top_viewed": top_viewed,
+        "top_converted": top_converted,
+        "top_abandoned": top_abandoned,
+    }
 
 
 def _build_customer_analysis(context: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -2763,127 +3123,284 @@ def _build_marketing_analysis(context: dict[str, Any], now: datetime) -> dict[st
     }
 
 
-def _build_funnel_analysis(context: dict[str, Any]) -> dict[str, Any]:
-    bundle = context["bundle"]
-    realized_orders = context["realized_orders"]
-    analytics_events = bundle["analytics_events"]
-    analytics_counter = Counter(_get_analytics_event_name(event) for event in analytics_events)
-
-    analytics_site_visits = analytics_counter.get("site_visit", 0)
-    analytics_skin_quiz_started = analytics_counter.get("skin_quiz_started", 0)
-    analytics_skin_quiz_completed = analytics_counter.get("skin_quiz_completed", 0)
-    analytics_product_views = analytics_counter.get("product_viewed", 0)
-    analytics_routine_builder_opened = analytics_counter.get("routine_builder_opened", 0)
-    analytics_cart_views = analytics_counter.get("cart_viewed", 0)
-    analytics_checkout_started = analytics_counter.get("checkout_started", 0)
-    analytics_checkout_completed = analytics_counter.get("checkout_completed", 0)
-
-    skin_quiz_completed = (
-        analytics_skin_quiz_completed
-        or len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "skin_quiz_completed"])
-        or len(bundle["skin_quiz_leads"])
+def _build_search_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
+    analytics_events = context["bundle"]["analytics_events"]
+    timelines = _build_analytics_session_timelines(
+        analytics_events,
+        since=now - timedelta(days=_ANALYTICS_LOOKBACK_DAYS),
     )
-    routine_orders = 0
-    for recommendation in _build_routine_builder_analysis(context)["routines"]:
-        routine_orders += int(recommendation["count"])
 
-    checkout_count = analytics_checkout_started or len(bundle["orders"])
-    purchase_count = analytics_checkout_completed or len(realized_orders)
+    term_stats: dict[str, dict[str, Any]] = {}
+    for session_events in timelines.values():
+        session_searches: dict[str, dict[str, Any]] = {}
 
-    product_view_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "product_view"])
-    add_to_cart_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) == "add_to_cart"])
-    visits_count = len([event for event in bundle["crm_events"] if str(event.get("event_type")) in {"page_view", "session_started", "home_view"}])
+        for event in session_events:
+            if _get_analytics_event_name(event) != "search_submitted":
+                continue
+            metadata = _get_analytics_event_metadata(event)
+            term = _normalize_search_query(metadata.get("query"))
+            event_created_at = _get_analytics_event_created_at(event)
+            if not term or event_created_at is None:
+                continue
+            current = session_searches.get(term)
+            if current is None or event_created_at < current["created_at"]:
+                session_searches[term] = {
+                    "label": _normalize_text(str(metadata.get("query") or term)) or term,
+                    "created_at": event_created_at,
+                    "no_results": _search_metadata_has_no_results(metadata),
+                }
 
-    raw_steps = [
-        (
-            "visits",
-            "Visitas",
-            analytics_site_visits if analytics_site_visits > 0 else visits_count if visits_count > 0 else None,
-            "measured" if analytics_site_visits > 0 else "proxy" if visits_count > 0 else "unavailable",
+        for term, search_data in session_searches.items():
+            stats = term_stats.setdefault(
+                term,
+                {
+                    "label": search_data["label"],
+                    "sessions": 0,
+                    "no_result_sessions": 0,
+                    "product_view_sessions": 0,
+                    "checkout_sessions": 0,
+                },
+            )
+            stats["sessions"] += 1
+            if search_data["no_results"]:
+                stats["no_result_sessions"] += 1
+
+            search_created_at = search_data["created_at"]
+            if any(
+                _get_analytics_event_name(event) == "product_viewed"
+                and (_get_analytics_event_created_at(event) or search_created_at) >= search_created_at
+                for event in session_events
+            ):
+                stats["product_view_sessions"] += 1
+            if any(
+                _get_analytics_event_name(event) == "checkout_completed"
+                and (_get_analytics_event_created_at(event) or search_created_at) >= search_created_at
+                for event in session_events
+            ):
+                stats["checkout_sessions"] += 1
+
+    sorted_by_frequency = sorted(
+        term_stats.values(),
+        key=lambda item: (-int(item["sessions"]), -int(item["checkout_sessions"]), str(item["label"]).lower()),
+    )[:10]
+    sorted_by_no_results = sorted(
+        [item for item in term_stats.values() if int(item["no_result_sessions"]) > 0],
+        key=lambda item: (-int(item["no_result_sessions"]), -int(item["sessions"]), str(item["label"]).lower()),
+    )[:10]
+    sorted_by_checkout = sorted(
+        [item for item in term_stats.values() if int(item["checkout_sessions"]) > 0],
+        key=lambda item: (
+            -int(item["checkout_sessions"]),
+            -round((int(item["checkout_sessions"]) / max(int(item["sessions"]), 1)) * 100, 1),
+            str(item["label"]).lower(),
         ),
-        (
-            "skin_quiz",
-            "Skin Quiz",
-            analytics_skin_quiz_started if analytics_skin_quiz_started > 0 else skin_quiz_completed if skin_quiz_completed > 0 else None,
-            "measured" if analytics_skin_quiz_started > 0 else "proxy" if skin_quiz_completed > 0 else "unavailable",
-        ),
-        (
-            "routine",
-            "Rutina",
-            analytics_skin_quiz_completed if analytics_skin_quiz_completed > 0 else routine_orders if routine_orders > 0 else None,
-            "measured" if analytics_skin_quiz_completed > 0 else "proxy" if routine_orders > 0 else "unavailable",
-        ),
-        (
-            "product",
-            "Producto",
-            analytics_product_views if analytics_product_views > 0 else product_view_count if product_view_count > 0 else None,
-            "measured" if analytics_product_views > 0 else "proxy" if product_view_count > 0 else "unavailable",
-        ),
-        (
-            "routine_builder",
-            "Routine Builder",
-            analytics_routine_builder_opened if analytics_routine_builder_opened > 0 else routine_orders if routine_orders > 0 else None,
-            "measured" if analytics_routine_builder_opened > 0 else "proxy" if routine_orders > 0 else "unavailable",
-        ),
-        (
-            "cart",
-            "Carrito",
-            analytics_cart_views if analytics_cart_views > 0 else add_to_cart_count if add_to_cart_count > 0 else None,
-            "measured" if analytics_cart_views > 0 else "proxy" if add_to_cart_count > 0 else "unavailable",
-        ),
-        (
-            "checkout",
-            "Checkout",
-            checkout_count if checkout_count > 0 else None,
-            "measured" if analytics_checkout_started > 0 else "proxy" if len(bundle["orders"]) > 0 else "unavailable",
-        ),
-        (
-            "purchase",
-            "Compra",
-            purchase_count if purchase_count > 0 else None,
-            "measured" if analytics_checkout_completed > 0 or len(realized_orders) > 0 else "unavailable",
-        ),
+    )[:10]
+
+    top_terms = [
+        _build_growth_ranked_item(
+            label=str(item["label"]),
+            count=int(item["sessions"]),
+            share=(int(item["checkout_sessions"]) / int(item["sessions"])) * 100 if int(item["sessions"]) > 0 else None,
+            helper=(
+                f"{int(item['product_view_sessions'])} sesion(es) llegaron a producto y {int(item['checkout_sessions'])} terminaron en compra."
+            ),
+        )
+        for item in sorted_by_frequency
+    ]
+    no_result_terms = [
+        _build_growth_ranked_item(
+            label=str(item["label"]),
+            count=int(item["no_result_sessions"]),
+            share=(int(item["no_result_sessions"]) / int(item["sessions"])) * 100 if int(item["sessions"]) > 0 else None,
+            helper=f"{int(item['sessions'])} sesion(es) buscaron este termino y no encontraron resultado persistido.",
+        )
+        for item in sorted_by_no_results
+    ]
+    converting_terms = [
+        _build_growth_ranked_item(
+            label=str(item["label"]),
+            count=int(item["checkout_sessions"]),
+            share=(int(item["checkout_sessions"]) / int(item["sessions"])) * 100 if int(item["sessions"]) > 0 else None,
+            helper=(
+                f"{int(item['sessions'])} sesion(es) buscaron este termino y {int(item['product_view_sessions'])} avanzaron a producto."
+            ),
+        )
+        for item in sorted_by_checkout
     ]
 
-    steps: list[dict[str, Any]] = []
-    previous_count: int | None = None
-    for step_id, label, count, measurement in raw_steps:
-        if previous_count is not None and count is not None and previous_count > 0:
-            conversion = round((count / previous_count) * 100, 1)
-            loss = max(previous_count - count, 0)
+    return {
+        "top_terms": top_terms,
+        "no_result_terms": no_result_terms,
+        "converting_terms": converting_terms,
+        "stats": term_stats,
+    }
+
+
+def _build_funnel_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
+    bundle = context["bundle"]
+    analytics_events = bundle["analytics_events"]
+    current_start = now - timedelta(days=7)
+    previous_start = now - timedelta(days=14)
+
+    current_timelines = _build_analytics_session_timelines(
+        analytics_events,
+        since=current_start,
+        until=now + timedelta(seconds=1),
+    )
+    previous_timelines = _build_analytics_session_timelines(
+        analytics_events,
+        since=previous_start,
+        until=current_start,
+    )
+
+    current_measured_counts: dict[str, int] = {}
+    previous_measured_counts: dict[str, int] = {}
+    for event_name, _ in _FUNNEL_STEP_DEFINITIONS:
+        current_measured_counts[event_name] = sum(
+            1 for session_events in current_timelines.values() if any(_get_analytics_event_name(event) == event_name for event in session_events)
+        )
+        previous_measured_counts[event_name] = sum(
+            1 for session_events in previous_timelines.values() if any(_get_analytics_event_name(event) == event_name for event in session_events)
+        )
+
+    crm_events_current = [
+        event
+        for event in bundle["crm_events"]
+        if (_normalize_datetime(event.get("created_at")) or now) >= current_start
+    ]
+    leads_current = [
+        lead for lead in bundle["skin_quiz_leads"] if (_normalize_datetime(lead.get("created_at")) or now) >= current_start
+    ]
+    orders_current = [
+        order for order in bundle["orders"] if (_normalize_datetime(order.get("created_at")) or now) >= current_start
+    ]
+    realized_orders_current = [
+        order for order in context["realized_orders"] if (_normalize_datetime(order.get("created_at")) or now) >= current_start
+    ]
+
+    proxy_counts: dict[str, int | None] = {
+        "site_visit": sum(
+            1
+            for event in crm_events_current
+            if str(event.get("event_type")) in {"page_view", "session_started", "home_view"}
+        ),
+        "search_submitted": None,
+        "skin_quiz_started": len(leads_current) or None,
+        "skin_quiz_completed": sum(
+            1 for event in crm_events_current if str(event.get("event_type")) == "skin_quiz_completed"
+        )
+        or len(leads_current)
+        or None,
+        "product_viewed": sum(
+            1 for event in crm_events_current if str(event.get("event_type")) == "product_view"
+        )
+        or None,
+        "routine_builder_opened": None,
+        "routine_full_added": None,
+        "routine_single_added": None,
+        "cart_viewed": sum(
+            1 for event in crm_events_current if str(event.get("event_type")) == "add_to_cart"
+        )
+        or None,
+        "checkout_started": len(orders_current) or None,
+        "checkout_completed": len(realized_orders_current) or None,
+    }
+
+    step_payloads: dict[str, dict[str, Any]] = {}
+    for event_name, label in _FUNNEL_STEP_DEFINITIONS:
+        measured_current = current_measured_counts[event_name]
+        measured_previous = previous_measured_counts[event_name]
+        has_measured_window = measured_current > 0 or measured_previous > 0
+        if has_measured_window:
+            count = measured_current
+            previous_count = measured_previous
+            status = "measured"
         else:
-            conversion = None
-            loss = None
+            proxy_count = proxy_counts.get(event_name)
+            count = proxy_count
+            previous_count = None
+            status = "proxy" if proxy_count is not None else "unavailable"
+
+        step_payloads[event_name] = {
+            "id": event_name,
+            "label": label,
+            "count": count,
+            "previous_count": previous_count,
+            "status": status,
+            "delta": _format_delta(float(count), float(previous_count))
+            if status == "measured" and count is not None and previous_count is not None
+            else None,
+        }
+
+    def get_count(step_id: str) -> int | None:
+        value = step_payloads[step_id]["count"]
+        return int(value) if value is not None else None
+
+    def get_baseline_count(step_id: str) -> int | None:
+        if step_id == "site_visit":
+            return None
+        if step_id == "routine_full_added" or step_id == "routine_single_added":
+            return get_count("routine_builder_opened")
+        if step_id == "cart_viewed":
+            decision_total = (get_count("routine_full_added") or 0) + (get_count("routine_single_added") or 0)
+            return decision_total if decision_total > 0 else get_count("routine_builder_opened")
+
+        previous_step_index = [name for name, _ in _FUNNEL_STEP_DEFINITIONS].index(step_id) - 1
+        if previous_step_index < 0:
+            return None
+        previous_step_id = _FUNNEL_STEP_DEFINITIONS[previous_step_index][0]
+        return get_count(previous_step_id)
+
+    steps: list[dict[str, Any]] = []
+    for event_name, _label in _FUNNEL_STEP_DEFINITIONS:
+        count = get_count(event_name)
+        baseline_count = get_baseline_count(event_name)
+        conversion = (
+            round((count / baseline_count) * 100, 1)
+            if count is not None and baseline_count is not None and baseline_count > 0
+            else None
+        )
+        loss = (
+            max(baseline_count - count, 0)
+            if count is not None and baseline_count is not None
+            else None
+        )
         steps.append(
             {
-                "id": step_id,
-                "label": label,
+                "id": event_name,
+                "label": step_payloads[event_name]["label"],
                 "count": count,
                 "display_value": str(count) if count is not None else "Sin dato",
                 "conversion_from_previous": conversion,
                 "loss_from_previous": loss,
-                "measurement": measurement,
+                "status": step_payloads[event_name]["status"],
+                "previous_period_count": step_payloads[event_name]["previous_count"],
+                "delta_vs_previous_7d": step_payloads[event_name]["delta"],
             }
         )
-        previous_count = count if count is not None else previous_count
+
+    search_count = get_count("search_submitted") or 0
+    product_count = get_count("product_viewed") or 0
+    checkout_started_count = get_count("checkout_started") or 0
+    purchase_count = get_count("checkout_completed") or 0
+    full_count = get_count("routine_full_added") or 0
+    single_count = get_count("routine_single_added") or 0
 
     funnel_insights = [
         (
-            f"Checkout a compra: {_format_percent_precise((purchase_count / checkout_count) * 100)}."
-            if checkout_count > 0
-            else "Todavia no hay checkouts persistidos para medir cierre."
+            f"Las busquedas convierten {_format_percent_precise((product_count / search_count) * 100)} hacia vistas de producto en la ventana reciente."
+            if search_count > 0 and product_count > 0
+            else "Todavia no hay suficiente base de busqueda medida para leer esa transicion."
         ),
         (
-            f"Skin Quiz terminado a Routine Builder abierto: {_format_percent_precise((analytics_routine_builder_opened / analytics_skin_quiz_completed) * 100)}."
-            if analytics_skin_quiz_completed > 0 and analytics_routine_builder_opened > 0
-            else f"Skin Quiz a rutina atribuida: {_format_percent_precise((routine_orders / skin_quiz_completed) * 100)}."
-            if skin_quiz_completed > 0 and routine_orders > 0
-            else "La capa media del embudo todavia depende de proxies, no de eventos completos."
+            f"Routine Builder reparte {_format_percent_precise((full_count / max(get_count('routine_builder_opened') or 1, 1)) * 100)} a rutina completa y {_format_percent_precise((single_count / max(get_count('routine_builder_opened') or 1, 1)) * 100)} a producto unico."
+            if (get_count("routine_builder_opened") or 0) > 0
+            else "Routine Builder aun no tiene una base suficiente para comparar decision completa vs producto unico."
         ),
         (
-            "Visitas, producto, Routine Builder y carrito ya estan entrando por analytics_events."
-            if analytics_site_visits > 0 or analytics_product_views > 0 or analytics_routine_builder_opened > 0 or analytics_cart_views > 0
-            else "Las etapas de visitas, producto y carrito se llenaran automaticamente cuando esos eventos se persistan en backend."
+            f"Checkout a compra cierra en {_format_percent_precise((purchase_count / checkout_started_count) * 100)}."
+            if checkout_started_count > 0 and purchase_count > 0
+            else "Todavia no hay checkouts medidos suficientes para estimar cierre real."
         ),
     ]
 
@@ -2892,17 +3409,216 @@ def _build_funnel_analysis(context: dict[str, Any]) -> dict[str, Any]:
         "insights": funnel_insights,
     }
 
+
+def _build_growth_insights(
+    context: dict[str, Any],
+    *,
+    search_analysis: dict[str, Any],
+    routine_builder: dict[str, Any],
+    product_analysis: dict[str, Any],
+    funnel: dict[str, Any],
+    now: datetime,
+) -> dict[str, Any]:
+    recent_events = [
+        event
+        for event in context["bundle"]["analytics_events"]
+        if (_get_analytics_event_created_at(event) or now) >= now - timedelta(days=_ANALYTICS_LOOKBACK_DAYS)
+    ]
+    if len(recent_events) < _GROWTH_MIN_EVENTS:
+        return {
+            "items": [],
+            "note": "Aun no hay suficiente informacion para detectar patrones confiables.",
+        }
+
+    insights: list[dict[str, Any]] = []
+    search_stats = search_analysis["stats"]
+    best_search_gap = next(
+        (
+            stats
+            for _term, stats in sorted(
+                search_stats.items(),
+                key=lambda item: (-int(item[1]["sessions"]), int(item[1]["checkout_sessions"]), item[0]),
+            )
+            if int(stats["sessions"]) >= 4
+            and (
+                int(stats["checkout_sessions"]) == 0
+                or (int(stats["checkout_sessions"]) / max(int(stats["sessions"]), 1)) <= 0.15
+            )
+        ),
+        None,
+    )
+    if best_search_gap:
+        sessions = int(best_search_gap["sessions"])
+        checkouts = int(best_search_gap["checkout_sessions"])
+        confidence = "high" if sessions >= 20 else "medium" if sessions >= 10 else "low"
+        insights.append(
+            _build_growth_recommendation(
+                id="search_gap",
+                priority="high" if sessions >= 8 else "medium",
+                title=f"{best_search_gap['label']} atrae interes, pero no baja a compra.",
+                explanation="Hay una brecha clara entre lo que la gente busca y lo que termina comprando desde esa intencion.",
+                evidence=f"{sessions} busqueda(s) de sesion y {checkouts} compra(s) ligadas al termino en 30 dias.",
+                recommended_action="Revisar la rutina, el CTA del catalogo o la seleccion de producto para ese problema de piel.",
+                confidence=confidence,
+                source="marketing",
+                impact_label="Busquedas",
+                impact_value=str(sessions),
+            )
+        )
+
+    no_result_candidate = next(
+        (
+            stats
+            for _term, stats in sorted(
+                search_stats.items(),
+                key=lambda item: (-int(item[1]["no_result_sessions"]), -int(item[1]["sessions"]), item[0]),
+            )
+            if int(stats["no_result_sessions"]) >= 2
+        ),
+        None,
+    )
+    if no_result_candidate:
+        no_result_sessions = int(no_result_candidate["no_result_sessions"])
+        confidence = "medium" if no_result_sessions >= 5 else "low"
+        insights.append(
+            _build_growth_recommendation(
+                id="search_no_results",
+                priority="medium",
+                title=f"{no_result_candidate['label']} genera friccion en el buscador.",
+                explanation="Ese termino ya aparece como intencion real, pero la telemetria persistida reporta sesiones sin resultado.",
+                evidence=f"{no_result_sessions} sesion(es) quedaron sin resultado persistido sobre {int(no_result_candidate['sessions'])} busqueda(s).",
+                recommended_action="Agregar sinonimos, contenido editorial o productos mejor conectados con esa necesidad.",
+                confidence=confidence,
+                source="marketing",
+                impact_label="Sin resultado",
+                impact_value=str(no_result_sessions),
+            )
+        )
+
+    if (
+        routine_builder.get("full_rate") is not None
+        and routine_builder.get("single_rate") is not None
+        and (routine_builder.get("single_rate") or 0) > (routine_builder.get("full_rate") or 0) + 10
+        and (routine_builder.get("checkout_sessions") or 0) >= 1
+    ):
+        insights.append(
+            _build_growth_recommendation(
+                id="routine_split",
+                priority="high",
+                title="Routine Builder inclina mas a producto unico que a rutina completa.",
+                explanation="La gente entra al modal, pero la rutina completa no esta ganando suficiente terreno frente al camino corto.",
+                evidence=(
+                    f"{routine_builder['full_rate']:.1f}% elige rutina completa vs {routine_builder['single_rate']:.1f}% solo producto; "
+                    f"{routine_builder['checkout_sessions']} sesion(es) con rutina ya llegaron a compra."
+                ),
+                recommended_action="Revisar el orden de pasos, beneficio corto de cada paso o el argumento del bundle completo.",
+                confidence="medium" if (routine_builder.get("checkout_sessions") or 0) < 5 else "high",
+                source="routines",
+                impact_label="Aperturas",
+                impact_value=str(routine_builder.get("checkout_sessions") or 0),
+            )
+        )
+
+    top_abandoned = product_analysis["top_abandoned"][0] if product_analysis["top_abandoned"] else None
+    if top_abandoned and top_abandoned["count"] >= 2:
+        insights.append(
+            _build_growth_recommendation(
+                id="product_abandonment",
+                priority="high" if (top_abandoned["share"] or 0) >= 60 else "medium",
+                title=f"{top_abandoned['label']} pierde demasiadas sesiones despues de la vista.",
+                explanation="El producto despierta interes, pero muchas sesiones no avanzan a carrito ni checkout despues de verlo.",
+                evidence=f"{top_abandoned['count']} sesion(es) abandonadas y una tasa observada de {_format_percent_precise(top_abandoned['share'])}.",
+                recommended_action="Revisar mensaje principal, stock visible, prueba social y claridad del beneficio en la PDP.",
+                confidence="high" if top_abandoned["count"] >= 5 else "medium",
+                source="products",
+                impact_label="Abandonos",
+                impact_value=str(top_abandoned["count"]),
+            )
+        )
+
+    top_converted = product_analysis["top_converted"][0] if product_analysis["top_converted"] else None
+    if top_converted and top_converted["count"] >= 2:
+        insights.append(
+            _build_growth_recommendation(
+                id="product_winner",
+                priority="medium",
+                title=f"{top_converted['label']} ya demuestra conversion desde la vista.",
+                explanation="Ese producto no solo atrae sesiones: tambien cierra compra dentro de la misma ruta medida.",
+                evidence=f"{top_converted['count']} compra(s) ligadas a {_format_percent_precise(top_converted['share'])} de conversion observada.",
+                recommended_action="Empujarlo en catalogo, blog o Skin Quiz antes de descontar productos mas debiles.",
+                confidence="high" if top_converted["count"] >= 5 else "medium",
+                source="products",
+                impact_label="Compras",
+                impact_value=str(top_converted["count"]),
+            )
+        )
+
+    biggest_loss_step = next(
+        (
+            step
+            for step in sorted(
+                [step for step in funnel["steps"] if step.get("loss_from_previous") not in {None, 0}],
+                key=lambda item: (-int(item["loss_from_previous"]), str(item["id"])),
+            )
+        ),
+        None,
+    )
+    if biggest_loss_step:
+        baseline = int(biggest_loss_step["count"] or 0) + int(biggest_loss_step["loss_from_previous"] or 0)
+        insights.append(
+            _build_growth_recommendation(
+                id="funnel_loss",
+                priority="high" if int(biggest_loss_step["loss_from_previous"] or 0) >= 5 else "medium",
+                title=f"La mayor fuga medida hoy esta antes de {str(biggest_loss_step['label']).lower()}.",
+                explanation="El embudo ya muestra donde se cae mas gente entre una etapa y la siguiente dentro de los eventos persistidos.",
+                evidence=f"{int(biggest_loss_step['loss_from_previous'] or 0)} sesion(es) se perdieron sobre una base de {baseline}.",
+                recommended_action="Concentrar la siguiente iteracion de CRO en esa transicion antes de seguir metiendo trafico nuevo.",
+                confidence="medium" if baseline < 20 else "high",
+                source="marketing",
+                impact_label="Fuga",
+                impact_value=str(int(biggest_loss_step["loss_from_previous"] or 0)),
+            )
+        )
+
+    priority_weight = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    insights.sort(key=lambda item: (priority_weight[item["priority"]], item["id"]))
+    deduped: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for item in insights:
+        if item["id"] in seen_ids:
+            continue
+        deduped.append(item)
+        seen_ids.add(item["id"])
+        if len(deduped) >= 5:
+            break
+
+    return {
+        "items": deduped,
+        "note": None,
+    }
+
+
 def _build_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
     skin_quiz = _build_skin_quiz_analysis(context, now)
     routine_builder = _build_routine_builder_analysis(context)
     customer_answers, priority_customers = _build_customer_analysis(context)
     marketing = _build_marketing_analysis(context, now)
-    funnel = _build_funnel_analysis(context)
+    search = _build_search_analysis(context, now)
+    product = _build_product_analysis(context, now)
+    funnel = _build_funnel_analysis(context, now)
+    growth = _build_growth_insights(
+        context,
+        search_analysis=search,
+        routine_builder=routine_builder,
+        product_analysis=product,
+        funnel=funnel,
+        now=now,
+    )
 
     measurement_notes = [
         skin_quiz["measurement_note"],
         routine_builder["measurement_note"],
-        "Origen de compra, embudo medio y abandono usan analytics_events cuando existen y proxies honestos cuando aun faltan eventos.",
+        "Origen de compra, Search Intelligence, Product Intelligence y embudo usan analytics_events cuando existen y proxies honestos cuando aun faltan eventos.",
     ]
 
     return {
@@ -2914,15 +3630,23 @@ def _build_analysis(context: dict[str, Any], now: datetime) -> dict[str, Any]:
         "routine_builder_metrics": routine_builder["metrics"],
         "routine_builder_answers": routine_builder["answers"],
         "routine_builder_routines": routine_builder["routines"],
-        "product_answers": _build_product_analysis(context, now),
+        "product_answers": product["answers"],
+        "product_top_viewed": product["top_viewed"],
+        "product_top_converted": product["top_converted"],
+        "product_top_abandoned": product["top_abandoned"],
         "customer_answers": customer_answers,
         "priority_customers": priority_customers,
         "marketing_answers": marketing["answers"],
         "marketing_sources": marketing["sources"],
         "marketing_coupons": marketing["coupons"],
+        "search_top_terms": search["top_terms"],
+        "search_no_result_terms": search["no_result_terms"],
+        "search_converting_terms": search["converting_terms"],
         "funnel_steps": funnel["steps"],
         "funnel_insights": funnel["insights"],
         "measurement_notes": measurement_notes,
+        "growth_note": growth["note"],
+        "growth_recommendations": growth["items"],
     }
 
 
@@ -2937,7 +3661,7 @@ def get_admin_intelligence_dashboard(db: Session) -> dict[str, Any]:
         "executive_summary": _build_executive_summary(context),
         "kpis": _build_kpis(context),
         "snapshots": _build_snapshots(context),
-        "recommendations": _build_recommendations(context),
+        "recommendations": analysis["growth_recommendations"] or _build_recommendations(context)[:5],
         "customer_scores": context["customer_scores"],
         "product_scores": [
             {key: value for key, value in product.items() if not key.startswith("_")}

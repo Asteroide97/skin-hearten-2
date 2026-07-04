@@ -42,7 +42,10 @@ const SOURCE_LINKS: Record<string, { href: string; label: string }> = {
   crm: { href: "/admin/crm", label: "Ver clientes" },
   cupones: { href: "/admin/cupones", label: "Ver cupones" },
   inventario: { href: "/admin/productos", label: "Ver producto" },
+  marketing: { href: "/admin/intelligence/analytics", label: "Analizar" },
+  products: { href: "/admin/productos", label: "Ver producto" },
   resenas: { href: "/admin/reviews", label: "Ver resenas" },
+  routines: { href: "/admin/rutinas", label: "Ver rutinas" },
   skin_quiz: { href: "/admin/skin-quiz-leads", label: "Analizar" },
 };
 
@@ -448,6 +451,9 @@ export function IntelligencePage() {
           ) : null}
         </div>
         <div className="mt-4 space-y-3">
+          {dashboard.analysis.growthNote ? (
+            <NoticeBanner kind="error" message={dashboard.analysis.growthNote} />
+          ) : null}
           {dashboard.recommendations.length === 0 ? (
             <EmptyBlock message="Todavia no hay acciones sugeridas porque faltan suficientes senales persistidas." />
           ) : (
@@ -462,9 +468,19 @@ export function IntelligencePage() {
                       <span className="inline-flex rounded-full border border-stone-200 bg-[#fff8f3] px-3 py-1 text-[11px] font-semibold text-stone-700">
                         Impacto {recommendation.impactValue}
                       </span>
+                      {recommendation.confidence ? (
+                        <span className="inline-flex rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold text-stone-700">
+                          Confianza {recommendation.confidence}
+                        </span>
+                      ) : null}
                     </div>
                     <h3 className="mt-3 text-base font-semibold leading-7 text-stone-950">{recommendation.title}</h3>
                     <p className="mt-1 text-sm leading-6 text-stone-600">{recommendation.description}</p>
+                    {recommendation.evidence ? (
+                      <p className="mt-3 rounded-[0.95rem] bg-[#fcfaf7] px-3 py-2 text-sm leading-6 text-stone-700">
+                        {recommendation.evidence}
+                      </p>
+                    ) : null}
                     <p className="mt-3 text-sm font-medium text-stone-800">{recommendation.suggestedAction}</p>
                   </div>
                   <Link
@@ -560,7 +576,26 @@ export function IntelligencePage() {
           title="Productos"
         >
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_360px]">
-            <QuestionGrid items={dashboard.analysis.productAnswers} />
+            <div className="space-y-4">
+              <QuestionGrid items={dashboard.analysis.productAnswers} />
+              <div className="grid gap-4 md:grid-cols-3">
+                <RankedList
+                  emptyLabel="Todavia no hay vistas de producto suficientes."
+                  items={dashboard.analysis.productTopViewed}
+                  title="Productos mas vistos"
+                />
+                <RankedList
+                  emptyLabel="Todavia no hay compras ligadas a vistas de producto."
+                  items={dashboard.analysis.productTopConverted}
+                  title="Vistas que terminan en compra"
+                />
+                <RankedList
+                  emptyLabel="Todavia no hay abandono medible despues de la vista."
+                  items={dashboard.analysis.productTopAbandoned}
+                  title="Abandono despues de la vista"
+                />
+              </div>
+            </div>
             <ProductScoreList items={dashboard.productScores.slice(0, 5)} />
           </div>
         </AccordionSection>
@@ -607,9 +642,24 @@ export function IntelligencePage() {
           onToggle={toggleSection}
           title="Marketing"
         >
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_420px]">
             <QuestionGrid items={dashboard.analysis.marketingAnswers} />
             <div className="grid gap-4 md:grid-cols-2">
+              <RankedList
+                emptyLabel="Todavia no hay busquedas suficientes para detectar terminos dominantes."
+                items={dashboard.analysis.searchTopTerms}
+                title="Busquedas mas frecuentes"
+              />
+              <RankedList
+                emptyLabel="Todavia no hay terminos con compra ligada en la misma sesion."
+                items={dashboard.analysis.searchConvertingTerms}
+                title="Busquedas que convierten"
+              />
+              <RankedList
+                emptyLabel="Todavia no se registran busquedas sin resultado persistido."
+                items={dashboard.analysis.searchNoResultTerms}
+                title="Busquedas sin resultado"
+              />
               <RankedList
                 emptyLabel="Todavia no hay origenes de compra suficientes."
                 items={dashboard.analysis.marketingSources}
@@ -932,12 +982,15 @@ function FunnelStepCard({ step }: { step: IntelligenceFunnelStep }) {
         <div>
           <p className="text-xs font-semibold tracking-[0.08em] text-stone-500">{step.label}</p>
           <p className="mt-2 text-lg font-semibold text-stone-950">{step.displayValue}</p>
+          {step.previousPeriodCount != null ? (
+            <p className="mt-1 text-xs text-stone-500">7d previos: {step.previousPeriodCount}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-stone-200 bg-[#fff8f3] px-3 py-1 text-xs font-semibold text-stone-700">
-            {step.measurement === "measured"
+            {step.status === "measured"
               ? "Medido"
-              : step.measurement === "proxy"
+              : step.status === "proxy"
                 ? "Proxy"
                 : "Sin telemetria"}
           </span>
@@ -949,6 +1002,12 @@ function FunnelStepCard({ step }: { step: IntelligenceFunnelStep }) {
           {step.lossFromPrevious != null ? (
             <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-700">
               Perdida {step.lossFromPrevious}
+            </span>
+          ) : null}
+          {step.deltaVsPrevious7d != null ? (
+            <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-700">
+              7d {step.deltaVsPrevious7d >= 0 ? "+" : ""}
+              {step.deltaVsPrevious7d.toFixed(1)}%
             </span>
           ) : null}
         </div>
