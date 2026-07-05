@@ -17,12 +17,14 @@ type SiteSearchProps = {
   catalogProducts: GuidedCatalogProduct[];
   className?: string;
   showPromptSuggestions?: boolean;
+  variant?: "default" | "header";
 };
 
 export function SiteSearch({
   catalogProducts,
   className,
   showPromptSuggestions = false,
+  variant = "default",
 }: SiteSearchProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -79,6 +81,8 @@ export function SiteSearch({
     });
   }
 
+  const isHeaderVariant = variant === "header";
+
   return (
     <form
       className={className}
@@ -96,10 +100,22 @@ export function SiteSearch({
         Cuentanos que quieres mejorar
       </label>
       <div className="relative" ref={containerRef}>
-        <div className="flex items-center gap-3 rounded-full border border-stone-200 bg-white/95 px-4 py-2.5 shadow-[0_12px_28px_rgba(32,25,20,0.04)] transition focus-within:border-stone-400">
-          <SearchIcon className="text-stone-400" />
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-full border transition",
+            isHeaderVariant
+              ? "border-[#f1b2a5] bg-white px-4 py-2 shadow-[0_14px_36px_rgba(73,39,34,0.12)] focus-within:border-stone-900 sm:px-5 sm:py-2.5"
+              : "border-stone-200 bg-white/95 px-4 py-2.5 shadow-[0_12px_28px_rgba(32,25,20,0.04)] focus-within:border-stone-400",
+          )}
+        >
+          <SearchIcon className={isHeaderVariant ? "text-stone-500" : "text-stone-400"} />
           <input
-            className="w-full bg-transparent text-sm text-stone-800 outline-none placeholder:text-stone-400"
+            className={cn(
+              "w-full bg-transparent outline-none",
+              isHeaderVariant
+                ? "text-sm text-stone-900 placeholder:text-stone-500 sm:text-base"
+                : "text-sm text-stone-800 placeholder:text-stone-400",
+            )}
             id="site-search"
             onChange={(event) => {
               const nextQuery = event.target.value;
@@ -116,7 +132,15 @@ export function SiteSearch({
             type="search"
             value={query}
           />
-          <button className="btn-primary shrink-0 px-4 py-2.5 text-xs" type="submit">
+          <button
+            className={cn(
+              "shrink-0 rounded-full font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
+              isHeaderVariant
+                ? "bg-stone-950 px-4 py-3 text-xs text-white hover:bg-stone-800 sm:px-6 sm:text-sm"
+                : "btn-primary px-4 py-2.5 text-xs",
+            )}
+            type="submit"
+          >
             Explorar
           </button>
         </div>
@@ -139,7 +163,12 @@ export function SiteSearch({
         ) : null}
 
         {isPanelOpen ? (
-          <div className="absolute left-0 right-0 top-full z-40 mt-3 overflow-hidden rounded-[2rem] border border-stone-200 bg-[#fffaf6] shadow-[0_28px_70px_rgba(34,25,20,0.14)]">
+          <div
+            className={cn(
+              "absolute left-0 right-0 top-full z-40 mt-3 overflow-hidden rounded-[2rem] border bg-[#fffaf6] shadow-[0_28px_70px_rgba(34,25,20,0.14)]",
+              isHeaderVariant ? "border-[#efc1b6]" : "border-stone-200",
+            )}
+          >
             <div className="border-b border-stone-200 bg-[#faf3eb] px-5 py-4 sm:px-6">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
                 Skin Advisor Search
