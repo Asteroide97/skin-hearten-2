@@ -7,7 +7,6 @@ import { SiteSearch } from "@/components/layout/site-search";
 import { SkinQuizModal } from "@/components/quiz/skin-quiz-modal";
 import { SkinQuizTrigger } from "@/components/quiz/skin-quiz-trigger";
 import { CartIcon, WhatsAppIcon } from "@/components/shared/icons";
-import { useStoredSkinQuizResult } from "@/hooks/use-stored-skin-quiz-result";
 import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
 import { useCartStore } from "@/store/cart-store";
 
@@ -28,15 +27,6 @@ const quickAccessItems = [
   { href: "/productos?categoria=protector-solar", icon: "SPF", label: "Protector solar" },
   { href: "/productos?q=acne", icon: "A", label: "Acne" },
   { href: "/productos?problema=Firmeza", icon: "+", label: "Anti-edad" },
-];
-
-const secondaryNavItems = [
-  { href: "/productos", label: "Productos" },
-  { href: "/productos?problema=Manchas", label: "Manchas" },
-  { href: "/productos?problema=Firmeza", label: "Anti-edad" },
-  { href: "/productos?categoria=protector-solar", label: "Protector solar" },
-  { href: "/reviews", label: "Resenas" },
-  { href: "/blog", label: "Blog" },
 ];
 
 type SiteHeaderProps = {
@@ -62,7 +52,6 @@ function isActivePath(pathname: string, href: string) {
 
 export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
   const pathname = usePathname();
-  const quizResult = useStoredSkinQuizResult();
   const itemCount = useCartStore((state) =>
     state.items.reduce((sum, item) => sum + item.quantity, 0),
   );
@@ -168,6 +157,12 @@ export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
 
         <div className="border-b border-stone-200 bg-[#fff8f2]">
           <div className="mx-auto flex max-w-[1320px] gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
+            <SkinQuizTrigger
+              className="inline-flex shrink-0 items-center justify-center rounded-full border border-[#ef8f7b] bg-[#ffe6df] px-4 py-2 text-sm font-semibold text-stone-950 transition hover:bg-[#ffd8ce]"
+              source="header"
+            >
+              Diagnostico en 2 minutos
+            </SkinQuizTrigger>
             {quickAccessItems.map((item) => (
               <Link
                 className="inline-flex shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 transition hover:border-stone-400 hover:bg-[#fffdfb]"
@@ -180,34 +175,6 @@ export function SiteHeader({ catalogProducts }: SiteHeaderProps) {
                 <span>{item.label}</span>
               </Link>
             ))}
-          </div>
-        </div>
-
-        <div className="bg-white">
-          <div className="mx-auto flex max-w-[1320px] items-center gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
-            <SkinQuizTrigger
-              className="inline-flex shrink-0 items-center justify-center rounded-full border border-[#ef8f7b] bg-[#ffe6df] px-4 py-2 text-sm font-semibold text-stone-950 transition hover:bg-[#ffd8ce]"
-              source="header"
-            >
-              {quizResult ? "Ver rutina" : "Diagnostico en 2 minutos"}
-            </SkinQuizTrigger>
-            {secondaryNavItems.map((item) => {
-              const isActive = isActivePath(pathname, item.href);
-
-              return (
-                <Link
-                  className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm transition ${
-                    isActive
-                      ? "bg-stone-950 text-white"
-                      : "text-stone-700 hover:bg-stone-100 hover:text-stone-950"
-                  }`}
-                  href={item.href}
-                  key={item.label}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
           </div>
         </div>
       </header>
