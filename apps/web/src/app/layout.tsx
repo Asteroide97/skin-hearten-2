@@ -3,6 +3,7 @@ import { Manrope, Newsreader } from "next/font/google";
 
 import { SiteFrame } from "@/components/layout/site-frame";
 import { Providers } from "@/components/providers";
+import { getCommercialContent } from "@/lib/commercial-content-api";
 import { toGuidedCatalogProducts } from "@/lib/guided-catalog";
 import { DEFAULT_OG_IMAGE_PATH, SITE_URL } from "@/lib/seo";
 import { getProducts } from "@/lib/storefront-api";
@@ -56,13 +57,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const catalogProducts = toGuidedCatalogProducts(await getProducts());
+  const [products, commercialContent] = await Promise.all([getProducts(), getCommercialContent()]);
+  const catalogProducts = toGuidedCatalogProducts(products);
 
   return (
     <html className={`${manrope.variable} ${newsreader.variable}`} lang="es">
       <body className="font-sans text-stone-900">
         <Providers>
-          <SiteFrame catalogProducts={catalogProducts}>{children}</SiteFrame>
+          <SiteFrame catalogProducts={catalogProducts} commercialContent={commercialContent}>
+            {children}
+          </SiteFrame>
         </Providers>
       </body>
     </html>

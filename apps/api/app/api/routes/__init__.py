@@ -1,5 +1,6 @@
 from app.api.routes import (
     analytics,
+    admin_commercial_content,
     admin_routines,
     admin_intelligence,
     admin_customers,
@@ -19,6 +20,7 @@ from app.api.routes import (
     cart,
     categories,
     checkout,
+    commercial_content,
     coupons,
     customer_orders,
     health,
@@ -33,6 +35,7 @@ from app.api.routes import (
 
 __all__ = [
     "analytics",
+    "admin_commercial_content",
     "admin_brands",
     "admin_categories",
     "admin_coupons",
@@ -52,6 +55,7 @@ __all__ = [
     "cart",
     "categories",
     "checkout",
+    "commercial_content",
     "coupons",
     "customer_orders",
     "health",

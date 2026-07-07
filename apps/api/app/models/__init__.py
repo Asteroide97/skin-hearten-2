@@ -12,7 +12,15 @@ from app.models.commerce import (
     OrderItem,
     Payment,
 )
-from app.models.content import BlogPost, Setting
+from app.models.content import (
+    BlogPost,
+    CommercialBanner,
+    CommercialContent,
+    CommercialNavigation,
+    CommercialQuickLink,
+    CommercialSection,
+    Setting,
+)
 from app.models.crm import (
     CRMAutomationRule,
     CRMAutomationRun,
@@ -40,6 +48,11 @@ __all__ = [
     "CouponUsage",
     "CRMAutomationRule",
     "CRMAutomationRun",
+    "CommercialBanner",
+    "CommercialContent",
+    "CommercialNavigation",
+    "CommercialQuickLink",
+    "CommercialSection",
     "Customer",
     "CustomerAddress",
     "CRMContact",

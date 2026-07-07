@@ -7,9 +7,21 @@ import type { ReviewsSummary } from "@/lib/reviews";
 
 type ReviewsShowcaseProps = {
   summary: ReviewsSummary;
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  primaryCtaLabel?: string;
+  secondaryCtaLabel?: string;
 };
 
-export function ReviewsShowcase({ summary }: ReviewsShowcaseProps) {
+export function ReviewsShowcase({
+  summary,
+  eyebrow = "Resenas verificadas",
+  title = "Lo que dicen nuestras clientas",
+  description = "Resenas aprobadas, lectura limpia y compras verificadas antes de decidir.",
+  primaryCtaLabel = "Ver todas las resenas",
+  secondaryCtaLabel = "Escribir resena",
+}: ReviewsShowcaseProps) {
   const hasReviews = summary.totalReviews > 0;
   const previewReviews = summary.approvedReviewsPreview.slice(0, 3);
   const placeholderCount = hasReviews ? Math.max(0, 3 - previewReviews.length) : 3;
@@ -21,9 +33,9 @@ export function ReviewsShowcase({ summary }: ReviewsShowcaseProps) {
       <div className="grid gap-8 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
         <div className="space-y-6">
           <SectionHeading
-            eyebrow="Resenas verificadas"
-            title="Lo que dicen nuestras clientas"
-            description="Resenas aprobadas, lectura limpia y compras verificadas antes de decidir."
+            eyebrow={eyebrow}
+            title={title}
+            description={description}
             eyebrowClassName="text-stone-600"
             titleClassName="text-stone-950"
             descriptionClassName="text-stone-700"
@@ -56,10 +68,10 @@ export function ReviewsShowcase({ summary }: ReviewsShowcaseProps) {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link className="btn-primary" href="/reviews">
-              Ver todas las resenas
+              {primaryCtaLabel}
             </Link>
             <Link className="btn-secondary border-stone-300 bg-white/85" href="/reviews/escribir">
-              Escribir resena
+              {secondaryCtaLabel}
             </Link>
           </div>
         </div>

@@ -6,14 +6,16 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { trackEvent } from "@/lib/analytics";
+import type { CommercialContent } from "@/lib/commercial-content";
 import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
 
 type SiteFrameProps = {
   catalogProducts: GuidedCatalogProduct[];
+  commercialContent: CommercialContent;
   children: React.ReactNode;
 };
 
-export function SiteFrame({ catalogProducts, children }: SiteFrameProps) {
+export function SiteFrame({ catalogProducts, commercialContent, children }: SiteFrameProps) {
   const pathname = usePathname();
   const isAdminRoute = pathname.startsWith("/admin");
 
@@ -30,9 +32,9 @@ export function SiteFrame({ catalogProducts, children }: SiteFrameProps) {
       <Suspense fallback={null}>
         <SiteVisitTracker pathname={pathname} />
       </Suspense>
-      <SiteHeader catalogProducts={catalogProducts} />
+      <SiteHeader catalogProducts={catalogProducts} commercialContent={commercialContent} />
       <main className="flex-1">{children}</main>
-      <SiteFooter />
+      <SiteFooter commercialContent={commercialContent} />
     </div>
   );
 }

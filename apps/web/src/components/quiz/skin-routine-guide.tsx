@@ -10,6 +10,7 @@ import {
 } from "@/lib/skin-quiz";
 import { SkinQuizTrigger } from "@/components/quiz/skin-quiz-trigger";
 import { ArrowUpRightIcon, CheckCircleIcon } from "@/components/shared/icons";
+import type { CommercialRoutineGuideStep } from "@/lib/commercial-content";
 
 const guidedSteps = [
   {
@@ -34,7 +35,19 @@ const guidedSteps = [
   },
 ];
 
-export function SkinRoutineGuide() {
+type SkinRoutineGuideProps = {
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  steps?: CommercialRoutineGuideStep[];
+};
+
+export function SkinRoutineGuide({
+  eyebrow = "Diagnostico guiado",
+  title = "Primero tu piel. Luego tu rutina.",
+  description = "El recorrido cambia: te entendemos, diagnosticamos y despues te mostramos lo que realmente vale la pena usar.",
+  steps = guidedSteps,
+}: SkinRoutineGuideProps) {
   const result = useStoredSkinQuizResult();
 
   if (result) {
@@ -128,12 +141,12 @@ export function SkinRoutineGuide() {
     <section className="space-y-8 rounded-[2.6rem] bg-[#f7efe7] px-5 py-8 sm:px-6 lg:px-8 lg:py-10">
       <div className="grid gap-6 lg:grid-cols-[0.74fr_1.26fr] lg:items-end">
         <div className="space-y-4">
-          <p className="section-label">Diagnostico guiado</p>
+          <p className="section-label">{eyebrow}</p>
           <h2 className="max-w-lg font-serif text-[2.7rem] leading-[0.96] text-stone-950 sm:text-[3.35rem]">
-            Primero tu piel. Luego tu rutina.
+            {title}
           </h2>
           <p className="max-w-xl text-sm leading-7 text-stone-600 sm:text-base">
-            El recorrido cambia: te entendemos, diagnosticamos y despues te mostramos lo que realmente vale la pena usar.
+            {description}
           </p>
         </div>
 
@@ -148,7 +161,7 @@ export function SkinRoutineGuide() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-4">
-        {guidedSteps.map((step) => (
+        {steps.map((step) => (
           <article className="rounded-[2rem] bg-white/82 p-5" key={step.eyebrow}>
             <p className="section-label">{step.eyebrow}</p>
             <h3 className="mt-4 font-serif text-[2rem] leading-[0.98] text-stone-950">

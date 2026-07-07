@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     analytics,
+    admin_commercial_content,
     admin_routines,
     admin_intelligence,
     admin_customers,
@@ -21,6 +22,7 @@ from app.api.routes import (
     cart,
     categories,
     checkout,
+    commercial_content,
     coupons,
     customer_orders,
     health,
@@ -36,6 +38,7 @@ from app.api.routes import (
 api_router = APIRouter()
 api_router.include_router(analytics.router, tags=["analytics"])
 api_router.include_router(auth.router, tags=["auth"])
+api_router.include_router(commercial_content.router, tags=["commercial-content"])
 api_router.include_router(product_reviews.router, tags=["product-reviews"])
 api_router.include_router(reviews.router, tags=["reviews"])
 api_router.include_router(products.router, tags=["products"])
@@ -51,6 +54,7 @@ api_router.include_router(payments.router, tags=["payments"])
 api_router.include_router(orders.router, tags=["orders"])
 api_router.include_router(blog.router, tags=["blog"])
 api_router.include_router(skin_quiz.router, tags=["skin-quiz"])
+api_router.include_router(admin_commercial_content.router, tags=["admin-commercial-content"])
 api_router.include_router(admin_products.router, tags=["admin-products"])
 api_router.include_router(admin_routines.router, tags=["admin-routines"])
 api_router.include_router(admin_categories.router, tags=["admin-categories"])
