@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { RatingStars } from "@/components/shared/rating-stars";
 import { formatDateTime } from "@/lib/format";
 import {
+  getAdminReviewInvitationStatusLabel,
   ADMIN_PRODUCT_REVIEW_RATING_OPTIONS,
   ADMIN_PRODUCT_REVIEW_STATUS_OPTIONS,
+  type AdminReviewInvitation,
+  type AdminReviewInvitationStatus,
   getAdminProductReviewSourceLabel,
   getAdminProductReviewStatusLabel,
   type AdminProductReview,
@@ -21,6 +25,14 @@ type ReviewsApiResponse =
 type ReviewMutationResponse =
   | { ok: true; data: AdminProductReview }
   | { ok: false; reason: string };
+
+type InvitationsApiResponse =
+  | { ok: true; data: AdminReviewInvitation[] }
+  | { ok: false; reason: string };
+
+type InvitationMutationResponse =
+  | { ok: true; data: AdminReviewInvitation }
+  | { ok: false; reason: string; message?: string };
 
 type Notice =
   | {
@@ -63,17 +75,37 @@ function getStatusBadgeClasses(status: AdminProductReviewStatus) {
   }
 }
 
+function getInvitationStatusBadgeClasses(status: AdminReviewInvitationStatus) {
+  switch (status) {
+    case "submitted":
+      return "border-[#d8e3cf] bg-[#f3faf0] text-[#476638]";
+    case "expired":
+      return "border-[#ead0c7] bg-[#fff6f2] text-[#8a4d3b]";
+    case "pending":
+    default:
+      return "border-[#e7d3c1] bg-[#fff8f3] text-stone-800";
+  }
+}
+
 export function ReviewsPage() {
   const [reviews, setReviews] = useState<AdminProductReview[]>([]);
+  const [invitations, setInvitations] = useState<AdminReviewInvitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInvitationsLoading, setIsInvitationsLoading] = useState(true);
   const [errorReason, setErrorReason] = useState<string | null>(null);
   const [pageNotice, setPageNotice] = useState<Notice>(null);
+  const [invitationNotice, setInvitationNotice] = useState<Notice>(null);
 
   const [searchValue, setSearchValue] = useState("");
   const [productValue, setProductValue] = useState("");
   const [statusValue, setStatusValue] = useState<StatusFilter>("all");
   const [ratingValue, setRatingValue] = useState<RatingFilter>("all");
   const [verifiedValue, setVerifiedValue] = useState<VerifiedFilter>("all");
+  const [inviteOrderNumber, setInviteOrderNumber] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePhone, setInvitePhone] = useState("");
+  const [inviteProductId, setInviteProductId] = useState("");
+  const [isCreatingInvitation, setIsCreatingInvitation] = useState(false);
 
   const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
   const [drawerNotice, setDrawerNotice] = useState<Notice>(null);
@@ -99,6 +131,39 @@ export function ReviewsPage() {
     setDraftTitle(activeReview.title ?? "");
     setDraftBody(activeReview.body);
   }, [activeReview]);
+
+  async function loadInvitations() {
+    setIsInvitationsLoading(true);
+
+    try {
+      const response = await fetch("/api/admin/review-invitations", { cache: "no-store" });
+      const payload = (await response.json()) as InvitationsApiResponse;
+
+      if (!response.ok || !payload.ok) {
+        setInvitations([]);
+        setInvitationNotice({
+          kind: "error",
+          message: "No pudimos consultar las invitaciones de resena por ahora.",
+        });
+        return;
+      }
+
+      setInvitations(payload.data);
+      setInvitationNotice(null);
+    } catch {
+      setInvitations([]);
+      setInvitationNotice({
+        kind: "error",
+        message: "No pudimos consultar las invitaciones de resena por ahora.",
+      });
+    } finally {
+      setIsInvitationsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadInvitations();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,6 +229,111 @@ export function ReviewsPage() {
   const reviewCountLabel = useMemo(() => {
     return reviews.length === 1 ? "1 resena" : `${reviews.length} resenas`;
   }, [reviews.length]);
+
+  function upsertInvitation(updatedInvitation: AdminReviewInvitation) {
+    setInvitations((current) => {
+      const existingIndex = current.findIndex((invitation) => invitation.id === updatedInvitation.id);
+      if (existingIndex === -1) {
+        return [updatedInvitation, ...current];
+      }
+
+      return current.map((invitation) => (invitation.id === updatedInvitation.id ? updatedInvitation : invitation));
+    });
+  }
+
+  async function handleCopyInvitation(token: string) {
+    const invitationUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/reviews/invitation/${token}`
+        : `/reviews/invitation/${token}`;
+
+    try {
+      await navigator.clipboard.writeText(invitationUrl);
+      setInvitationNotice({
+        kind: "success",
+        message: "Link de invitacion copiado.",
+      });
+    } catch {
+      setInvitationNotice({
+        kind: "error",
+        message: "No pudimos copiar el link. Puedes abrirlo manualmente desde el panel.",
+      });
+    }
+  }
+
+  async function handleCreateInvitation() {
+    if (!inviteOrderNumber.trim()) {
+      setInvitationNotice({
+        kind: "error",
+        message: "Ingresa un numero de pedido para generar la invitacion.",
+      });
+      return;
+    }
+
+    if (!inviteEmail.trim() && !invitePhone.trim()) {
+      setInvitationNotice({
+        kind: "error",
+        message: "Ingresa email o WhatsApp para validar el pedido.",
+      });
+      return;
+    }
+
+    const parsedProductId = inviteProductId.trim().length > 0 ? Number(inviteProductId.trim()) : undefined;
+    if (inviteProductId.trim().length > 0 && (!Number.isFinite(parsedProductId) || (parsedProductId ?? 0) <= 0)) {
+      setInvitationNotice({
+        kind: "error",
+        message: "El producto opcional debe ser un ID numerico valido.",
+      });
+      return;
+    }
+
+    setIsCreatingInvitation(true);
+    setInvitationNotice(null);
+
+    try {
+      const response = await fetch("/api/admin/review-invitations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderNumber: inviteOrderNumber.trim(),
+          ...(inviteEmail.trim().length > 0 ? { email: inviteEmail.trim() } : {}),
+          ...(invitePhone.trim().length > 0 ? { phone: invitePhone.trim() } : {}),
+          ...(typeof parsedProductId === "number" ? { productId: parsedProductId } : {}),
+        }),
+      });
+      const result = (await response.json()) as InvitationMutationResponse;
+
+      if (!response.ok || !result.ok) {
+        setInvitationNotice({
+          kind: "error",
+          message:
+            !result.ok && result.message
+              ? result.message
+              : "No pudimos generar la invitacion de resena por ahora.",
+        });
+        return;
+      }
+
+      upsertInvitation(result.data);
+      setInviteOrderNumber("");
+      setInviteEmail("");
+      setInvitePhone("");
+      setInviteProductId("");
+      setInvitationNotice({
+        kind: "success",
+        message: `Invitacion lista para el pedido ${result.data.orderNumber}.`,
+      });
+    } catch {
+      setInvitationNotice({
+        kind: "error",
+        message: "No pudimos generar la invitacion de resena por ahora.",
+      });
+    } finally {
+      setIsCreatingInvitation(false);
+    }
+  }
 
   function mergeUpdatedReview(updatedReview: AdminProductReview) {
     setReviews((current) => current.map((review) => (review.id === updatedReview.id ? updatedReview : review)));
@@ -299,6 +469,134 @@ export function ReviewsPage() {
               ]}
               value={verifiedValue}
             />
+          </div>
+        </section>
+
+        <section className="soft-panel rounded-[1.8rem] p-5 sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-stone-500">Invitaciones de resena</p>
+              <h2 className="mt-2 font-serif text-3xl text-stone-900">Genera enlaces verificados por pedido</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-stone-600">
+                Busca un pedido con email o WhatsApp, crea un link unico y comparte la URL para recibir resenas pendientes de aprobacion.
+              </p>
+            </div>
+            <button
+              className="rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isCreatingInvitation}
+              onClick={() => {
+                void handleCreateInvitation();
+              }}
+              type="button"
+            >
+              {isCreatingInvitation ? "Generando..." : "Generar link"}
+            </button>
+          </div>
+
+          {invitationNotice ? <NoticeBanner className="mt-5" notice={invitationNotice} /> : null}
+
+          <div className="mt-6 grid gap-3 xl:grid-cols-[1.1fr_1fr_1fr_0.8fr]">
+            <FieldFilter
+              label="Pedido"
+              onChange={setInviteOrderNumber}
+              placeholder="Ejemplo: SH-1043"
+              value={inviteOrderNumber}
+            />
+            <FieldFilter
+              label="Email"
+              onChange={setInviteEmail}
+              placeholder="cliente@email.com"
+              value={inviteEmail}
+            />
+            <FieldFilter
+              label="WhatsApp"
+              onChange={setInvitePhone}
+              placeholder="5512345678"
+              value={invitePhone}
+            />
+            <FieldFilter
+              label="Producto ID"
+              onChange={setInviteProductId}
+              placeholder="Opcional"
+              value={inviteProductId}
+            />
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white">
+            {isInvitationsLoading ? (
+              <EmptyBlock message="Cargando invitaciones de resena..." />
+            ) : invitations.length === 0 ? (
+              <EmptyBlock message="Aun no hay invitaciones generadas. Crea la primera desde un pedido real." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[860px] divide-y divide-stone-200 text-left">
+                  <thead className="bg-[#fff8f3] text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+                    <tr>
+                      <th className="px-4 py-4">Pedido</th>
+                      <th className="px-4 py-4">Producto</th>
+                      <th className="px-4 py-4">Contacto</th>
+                      <th className="px-4 py-4">Status</th>
+                      <th className="px-4 py-4">Fecha</th>
+                      <th className="px-4 py-4 text-right">Link</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100 text-sm text-stone-700">
+                    {invitations.slice(0, 8).map((invitation) => (
+                      <tr className="align-top" key={invitation.id}>
+                        <td className="px-4 py-4">
+                          <p className="font-semibold text-stone-900">{invitation.orderNumber}</p>
+                          <p className="mt-1 text-xs text-stone-500">#{invitation.orderId}</p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="font-medium text-stone-900">{invitation.productName ?? "Todo el pedido"}</p>
+                          <p className="mt-1 text-xs text-stone-500">
+                            {invitation.productId ? `Producto ${invitation.productId}` : "La clienta elige desde el pedido"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="text-stone-700">{invitation.customerEmail ?? "Sin email"}</p>
+                          <p className="mt-1 text-xs text-stone-500">{invitation.customerPhone ?? "Sin WhatsApp"}</p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getInvitationStatusBadgeClasses(invitation.status)}`}
+                          >
+                            {getAdminReviewInvitationStatusLabel(invitation.status)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-stone-600">
+                          <p>{formatDateTime(invitation.createdAt)}</p>
+                          <p className="mt-1 text-xs text-stone-500">
+                            {invitation.expiresAt ? `Vence ${formatDateTime(invitation.expiresAt)}` : "Sin vencimiento"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              className="inline-flex items-center justify-center rounded-full border border-stone-300 px-4 py-2 text-xs font-semibold text-stone-800 transition hover:border-stone-500"
+                              onClick={() => {
+                                void handleCopyInvitation(invitation.token);
+                              }}
+                              type="button"
+                            >
+                              Copiar URL
+                            </button>
+                            <Link
+                              className="inline-flex items-center justify-center rounded-full border border-stone-300 px-4 py-2 text-xs font-semibold text-stone-800 transition hover:border-stone-500"
+                              href={`/reviews/invitation/${invitation.token}`}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              Abrir
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </section>
 

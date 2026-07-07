@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, mo
 
 ProductReviewStatus = Literal["pending", "approved", "rejected"]
 ProductReviewSource = Literal["customer", "imported", "admin"]
+ReviewInvitationStatus = Literal["pending", "submitted", "expired"]
 
 
 class ProductReviewRead(BaseModel):
@@ -127,6 +128,106 @@ class ProductReviewCreateResponse(BaseModel):
     created_at: datetime = Field(serialization_alias="createdAt")
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class ReviewInvitationProductOption(BaseModel):
+    product_id: int = Field(serialization_alias="productId")
+    product_name: str = Field(serialization_alias="productName")
+    product_slug: str | None = Field(default=None, serialization_alias="productSlug")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ReviewInvitationPublicRead(BaseModel):
+    id: int
+    token: str
+    status: ReviewInvitationStatus
+    order_number: str = Field(serialization_alias="orderNumber")
+    customer_name: str | None = Field(default=None, serialization_alias="customerName")
+    expires_at: datetime | None = Field(default=None, serialization_alias="expiresAt")
+    submitted_at: datetime | None = Field(default=None, serialization_alias="submittedAt")
+    created_at: datetime = Field(serialization_alias="createdAt")
+    selected_product_id: int | None = Field(default=None, serialization_alias="selectedProductId")
+    items: list[ReviewInvitationProductOption] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ReviewInvitationSubmit(BaseModel):
+    product_id: int | None = Field(default=None, alias="productId", ge=1)
+    rating: int = Field(ge=1, le=5)
+    title: str | None = Field(default=None, max_length=255)
+    body: str = Field(min_length=10)
+    customer_name: str | None = Field(default=None, alias="customerName", max_length=255)
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    @field_validator("title", "customer_name", mode="before")
+    @classmethod
+    def normalize_optional_display_fields(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @field_validator("body", mode="before")
+    @classmethod
+    def normalize_invitation_body(cls, value: str) -> str:
+        return value.strip()
+
+
+class ReviewInvitationSubmitResponse(BaseModel):
+    review_id: int = Field(serialization_alias="reviewId")
+    status: ProductReviewStatus = Field(serialization_alias="reviewStatus")
+    submitted_at: datetime = Field(serialization_alias="submittedAt")
+    created_at: datetime = Field(serialization_alias="createdAt")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AdminReviewInvitationRead(BaseModel):
+    id: int
+    token: str
+    status: ReviewInvitationStatus
+    order_id: int = Field(serialization_alias="orderId")
+    order_number: str = Field(serialization_alias="orderNumber")
+    customer_email: EmailStr | None = Field(default=None, serialization_alias="customerEmail")
+    customer_phone: str | None = Field(default=None, serialization_alias="customerPhone")
+    product_id: int | None = Field(default=None, serialization_alias="productId")
+    product_name: str | None = Field(default=None, serialization_alias="productName")
+    expires_at: datetime | None = Field(default=None, serialization_alias="expiresAt")
+    submitted_at: datetime | None = Field(default=None, serialization_alias="submittedAt")
+    created_at: datetime = Field(serialization_alias="createdAt")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AdminReviewInvitationCreate(BaseModel):
+    order_number: str = Field(alias="orderNumber", min_length=2, max_length=80)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=40)
+    product_id: int | None = Field(default=None, alias="productId", ge=1)
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    @field_validator("order_number", mode="before")
+    @classmethod
+    def normalize_admin_order_number(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_admin_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @model_validator(mode="after")
+    def validate_admin_contact(self) -> "AdminReviewInvitationCreate":
+        if not self.email and not self.phone:
+            raise ValueError("Email or phone is required")
+        return self
 
 
 class AdminProductReviewRead(BaseModel):

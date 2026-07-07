@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     analytics,
     admin_commercial_content,
+    admin_review_invitations,
     admin_routines,
     admin_intelligence,
     admin_customers,
@@ -31,6 +32,7 @@ from app.api.routes import (
     product_reviews,
     products,
     reviews,
+    review_invitations,
     routines,
     skin_quiz,
 )
@@ -41,6 +43,7 @@ api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(commercial_content.router, tags=["commercial-content"])
 api_router.include_router(product_reviews.router, tags=["product-reviews"])
 api_router.include_router(reviews.router, tags=["reviews"])
+api_router.include_router(review_invitations.router, tags=["review-invitations"])
 api_router.include_router(products.router, tags=["products"])
 api_router.include_router(routines.router, tags=["routines"])
 api_router.include_router(categories.router, tags=["categories"])
@@ -63,6 +66,7 @@ api_router.include_router(admin_coupons.router, tags=["admin-coupons"])
 api_router.include_router(admin_customers.router, tags=["admin-customers"])
 api_router.include_router(admin_orders.router, tags=["admin-orders"])
 api_router.include_router(admin_reviews.router, tags=["admin-reviews"])
+api_router.include_router(admin_review_invitations.router, tags=["admin-review-invitations"])
 api_router.include_router(admin_crm.router, tags=["admin-crm"])
 api_router.include_router(admin_imports.router, tags=["admin-imports"])
 api_router.include_router(admin_intelligence.router, tags=["admin-intelligence"])

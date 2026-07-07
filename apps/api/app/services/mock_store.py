@@ -576,6 +576,8 @@ PRODUCT_REVIEWS = [
     },
 ]
 
+REVIEW_INVITATIONS: list[dict] = []
+
 COUPONS = [
     {
         "id": 1,
@@ -2077,6 +2079,43 @@ def update_product_review(review_id: int, payload: dict) -> dict | None:
         return None
     review.update(payload)
     return deepcopy(review)
+
+
+def list_review_invitations() -> list[dict]:
+    invitations = [deepcopy(invitation) for invitation in REVIEW_INVITATIONS]
+    invitations.sort(
+        key=lambda invitation: invitation.get("created_at") or datetime.now(timezone.utc),
+        reverse=True,
+    )
+    return invitations
+
+
+def get_review_invitation_by_token(token: str) -> dict | None:
+    invitation = next((entry for entry in REVIEW_INVITATIONS if entry.get("token") == token), None)
+    if not invitation:
+        return None
+    return deepcopy(invitation)
+
+
+def create_review_invitation(payload: dict) -> dict:
+    next_id = max(invitation["id"] for invitation in REVIEW_INVITATIONS) + 1 if REVIEW_INVITATIONS else 1
+    invitation = {
+        "id": next_id,
+        "status": payload.get("status", "pending"),
+        "created_at": datetime.now(timezone.utc),
+        "submitted_at": payload.get("submitted_at"),
+        **payload,
+    }
+    REVIEW_INVITATIONS.append(invitation)
+    return deepcopy(invitation)
+
+
+def update_review_invitation(invitation_id: int, payload: dict) -> dict | None:
+    invitation = next((entry for entry in REVIEW_INVITATIONS if entry["id"] == invitation_id), None)
+    if not invitation:
+        return None
+    invitation.update(payload)
+    return deepcopy(invitation)
 
 
 def create_product(payload: dict) -> dict:

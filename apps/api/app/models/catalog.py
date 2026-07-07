@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, St
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
-from app.models.enums import ProductReviewSource, ProductReviewStatus
+from app.models.enums import ProductReviewSource, ProductReviewStatus, ReviewInvitationStatus
 from app.models.mixins import TimestampMixin
 
 
@@ -95,3 +95,25 @@ class ProductReview(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ReviewInvitation(Base):
+    __tablename__ = "review_invitations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), index=True)
+    customer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    customer_phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True, index=True)
+    status: Mapped[ReviewInvitationStatus] = mapped_column(
+        Enum(
+            ReviewInvitationStatus,
+            native_enum=False,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        default=ReviewInvitationStatus.PENDING,
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

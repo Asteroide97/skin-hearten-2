@@ -137,12 +137,12 @@ export function CheckoutStatusPage({
                   <span>{formatCurrency(order.subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Descuento</span>
+                  <span>Ajuste</span>
                   <span>-{formatCurrency(order.discount)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Envio</span>
-                  <span>{order.shipping === 0 ? "Gratis" : formatCurrency(order.shipping)}</span>
+                  <span>{order.shipping === 0 ? "Protegido sin costo" : formatCurrency(order.shipping)}</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-base font-semibold text-stone-900">
                   <span>Total</span>
@@ -172,7 +172,7 @@ export function CheckoutStatusPage({
             className="inline-flex items-center justify-center rounded-full border border-stone-300 px-5 py-3 text-sm font-medium text-stone-800"
             href={variant === "error" ? "/checkout" : "/productos"}
           >
-            {variant === "error" ? "Volver al checkout" : "Volver a tienda"}
+            {variant === "error" ? "Volver al checkout" : "Volver a la seleccion"}
           </Link>
         </div>
       </section>

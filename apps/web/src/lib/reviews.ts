@@ -43,6 +43,42 @@ export type VerifiedReviewCreateResponse = {
   createdAt: string;
 };
 
+export type ReviewInvitationStatus = "pending" | "submitted" | "expired";
+
+export type ReviewInvitationProductOption = {
+  productId: number;
+  productName: string;
+  productSlug: string | null;
+};
+
+export type ReviewInvitation = {
+  id: number;
+  token: string;
+  status: ReviewInvitationStatus;
+  orderNumber: string;
+  customerName: string | null;
+  expiresAt: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+  selectedProductId: number | null;
+  items: ReviewInvitationProductOption[];
+};
+
+export type ReviewInvitationSubmitInput = {
+  productId?: number;
+  rating: number;
+  title?: string;
+  body: string;
+  customerName?: string;
+};
+
+export type ReviewInvitationSubmitResponse = {
+  reviewId: number;
+  reviewStatus: "pending" | "approved" | "rejected";
+  submittedAt: string;
+  createdAt: string;
+};
+
 export function createEmptyReviewsSummary(): ReviewsSummary {
   return {
     averageRating: 0,

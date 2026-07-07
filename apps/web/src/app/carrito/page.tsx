@@ -5,12 +5,11 @@ export default function ShoppingCartPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-5 py-8 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="Carrito"
-        title="Resumen limpio antes del checkout"
-        description="Subtotal, descuento, envio y total listos para conectarse con la API real."
+        eyebrow="Tu rutina"
+        title="Lo que estas por llevar a tu piel"
+        description="Revisa pasos, ajusta tu seleccion y continua con calma."
       />
       <CartPage />
     </div>
   );
 }
-

@@ -1,5 +1,6 @@
 export type AdminProductReviewStatus = "pending" | "approved" | "rejected";
 export type AdminProductReviewSource = "customer" | "imported" | "admin";
+export type AdminReviewInvitationStatus = "pending" | "submitted" | "expired";
 
 export type AdminProductReview = {
   id: number;
@@ -31,6 +32,28 @@ export type AdminProductReviewUpdateInput = {
   status?: AdminProductReviewStatus;
   title?: string | null;
   body?: string;
+};
+
+export type AdminReviewInvitation = {
+  id: number;
+  token: string;
+  status: AdminReviewInvitationStatus;
+  orderId: number;
+  orderNumber: string;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  productId: number | null;
+  productName: string | null;
+  expiresAt: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+};
+
+export type AdminReviewInvitationCreateInput = {
+  orderNumber: string;
+  email?: string;
+  phone?: string;
+  productId?: number;
 };
 
 export const ADMIN_PRODUCT_REVIEW_STATUS_OPTIONS: Array<{
@@ -65,5 +88,17 @@ export function getAdminProductReviewSourceLabel(source: AdminProductReviewSourc
       return "Admin";
     default:
       return source;
+  }
+}
+
+export function getAdminReviewInvitationStatusLabel(status: AdminReviewInvitationStatus) {
+  switch (status) {
+    case "submitted":
+      return "Usada";
+    case "expired":
+      return "Expirada";
+    case "pending":
+    default:
+      return "Activa";
   }
 }

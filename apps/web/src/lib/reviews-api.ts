@@ -1,6 +1,9 @@
 import "server-only";
 
 import type {
+  ReviewInvitation,
+  ReviewInvitationSubmitInput,
+  ReviewInvitationSubmitResponse,
   ReviewsListResponse,
   ReviewsSummary,
   VerifiedReviewCreateInput,
@@ -149,5 +152,90 @@ export async function createVerifiedReview(
     return { ok: true, data };
   } catch {
     return { ok: false, reason: "fetch_failed", message: "No pudimos enviar tu resena verificada." };
+  }
+}
+
+export async function getReviewInvitation(token: string): Promise<ReviewsApiResult<ReviewInvitation>> {
+  const apiBaseUrl = getApiBaseUrl();
+  if (!apiBaseUrl) {
+    return {
+      ok: false,
+      reason: "api_url_missing",
+      message: "Configura NEXT_PUBLIC_API_URL para consultar invitaciones de resena.",
+    };
+  }
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/reviews/invitations/${encodeURIComponent(token)}`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      let message = "No pudimos cargar esta invitacion de resena.";
+      try {
+        const errorPayload = (await response.json()) as { detail?: string };
+        if (typeof errorPayload.detail === "string" && errorPayload.detail.trim().length > 0) {
+          message = errorPayload.detail;
+        }
+      } catch {
+        // Keep fallback message.
+      }
+
+      return {
+        ok: false,
+        reason: response.status === 404 ? "not_found" : "fetch_failed",
+        status: response.status,
+        message,
+      };
+    }
+
+    const data = (await response.json()) as ReviewInvitation;
+    return { ok: true, data };
+  } catch {
+    return { ok: false, reason: "fetch_failed", message: "No pudimos cargar esta invitacion de resena." };
+  }
+}
+
+export async function submitReviewInvitation(
+  token: string,
+  payload: ReviewInvitationSubmitInput,
+): Promise<ReviewsApiResult<ReviewInvitationSubmitResponse>> {
+  const apiBaseUrl = getApiBaseUrl();
+  if (!apiBaseUrl) {
+    return {
+      ok: false,
+      reason: "api_url_missing",
+      message: "Configura NEXT_PUBLIC_API_URL para enviar invitaciones de resena.",
+    };
+  }
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/reviews/invitations/${encodeURIComponent(token)}/submit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      let message = "No pudimos enviar tu resena verificada por invitacion.";
+      try {
+        const errorPayload = (await response.json()) as { detail?: string };
+        if (typeof errorPayload.detail === "string" && errorPayload.detail.trim().length > 0) {
+          message = errorPayload.detail;
+        }
+      } catch {
+        // Keep fallback message.
+      }
+
+      return { ok: false, reason: "fetch_failed", status: response.status, message };
+    }
+
+    const data = (await response.json()) as ReviewInvitationSubmitResponse;
+    return { ok: true, data };
+  } catch {
+    return { ok: false, reason: "fetch_failed", message: "No pudimos enviar tu resena verificada por invitacion." };
   }
 }

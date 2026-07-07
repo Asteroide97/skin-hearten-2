@@ -2,6 +2,8 @@ import "server-only";
 
 import { requestAdminJson } from "@/lib/admin-api-client";
 import type {
+  AdminReviewInvitation,
+  AdminReviewInvitationCreateInput,
   AdminProductReview,
   AdminProductReviewFilters,
   AdminProductReviewUpdateInput,
@@ -15,5 +17,16 @@ export async function updateAdminReview(reviewId: number, payload: AdminProductR
   return requestAdminJson<AdminProductReview>(`/admin/reviews/${reviewId}`, {
     body: payload,
     method: "PATCH",
+  });
+}
+
+export async function listAdminReviewInvitations() {
+  return requestAdminJson<AdminReviewInvitation[]>("/admin/review-invitations");
+}
+
+export async function createAdminReviewInvitation(payload: AdminReviewInvitationCreateInput) {
+  return requestAdminJson<AdminReviewInvitation>("/admin/review-invitations", {
+    body: payload,
+    method: "POST",
   });
 }

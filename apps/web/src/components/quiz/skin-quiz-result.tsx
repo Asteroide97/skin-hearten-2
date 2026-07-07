@@ -26,9 +26,7 @@ export function SkinQuizResult({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">
-          Tu skincare advisor
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">Para tu piel</p>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-3">
             <h2 className="font-serif text-3xl text-stone-950 sm:text-4xl">Tu rutina recomendada</h2>
@@ -39,7 +37,7 @@ export function SkinQuizResult({
             onClick={onRestart}
             type="button"
           >
-            Volver a responder
+            Ajustar respuestas
           </button>
         </div>
       </div>
@@ -52,8 +50,8 @@ export function SkinQuizResult({
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">Productos recomendados</p>
-            <h3 className="mt-2 font-serif text-2xl text-stone-900">Curados desde el catalogo actual</h3>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">Tu seleccion</p>
+            <h3 className="mt-2 font-serif text-2xl text-stone-900">Los productos que sostienen tu rutina</h3>
           </div>
           <p className="text-sm text-stone-500">{result.recommendedProducts.length} esenciales sugeridos</p>
         </div>
@@ -72,7 +70,7 @@ export function SkinQuizResult({
                     </span>
                     {product.bestSeller ? (
                       <span className="rounded-full bg-stone-950 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-white">
-                        Bestseller
+                        Muy elegido
                       </span>
                     ) : null}
                   </div>
@@ -112,7 +110,7 @@ export function SkinQuizResult({
           href={result.collectionHref}
           onClick={onClose}
         >
-          Ver rutina completa
+          Ver mi rutina
           <ArrowUpRightIcon />
         </Link>
         <a
@@ -154,13 +152,16 @@ type RoutineCardProps = {
 function RoutineCard({ period, steps }: RoutineCardProps) {
   return (
     <section className="rounded-[1.8rem] border border-stone-200 bg-[#fffaf7] p-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">Rutina {period}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">
+        Rutina {period === "AM" ? "manana" : "noche"}
+      </p>
       <div className="mt-4 space-y-3">
-        {steps.map((step) => (
+        {steps.map((step, index) => (
           <div className="rounded-[1.4rem] bg-white p-4 shadow-soft" key={`${period}-${step.slot}-${step.product.id}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">{step.slot}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">Paso {index + 1}</p>
+                <p className="mt-2 text-sm font-semibold text-stone-700">{step.slot}</p>
                 <h4 className="mt-2 text-base font-semibold text-stone-950">{step.product.name}</h4>
               </div>
               <span className="rounded-full border border-stone-200 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-600">

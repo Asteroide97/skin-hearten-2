@@ -54,6 +54,12 @@ class ProductReviewSource(StrEnum):
     ADMIN = "admin"
 
 
+class ReviewInvitationStatus(StrEnum):
+    PENDING = "pending"
+    SUBMITTED = "submitted"
+    EXPIRED = "expired"
+
+
 class CRMLifecycleStatus(StrEnum):
     LEAD = "lead"
     CUSTOMER = "customer"

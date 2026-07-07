@@ -60,7 +60,7 @@ export function CouponApplyForm({ customerEmail, customerPhone }: CouponApplyFor
     if (items.length === 0) {
       setNotice({
         kind: "error",
-        message: "Agrega productos antes de aplicar un cupon.",
+        message: "Anade productos a tu rutina antes de aplicar un codigo.",
       });
       return;
     }
@@ -70,7 +70,7 @@ export function CouponApplyForm({ customerEmail, customerPhone }: CouponApplyFor
       clearCoupon();
       setNotice({
         kind: "error",
-        message: "Ingresa un codigo de cupon.",
+        message: "Ingresa un codigo.",
       });
       return;
     }
@@ -126,7 +126,7 @@ export function CouponApplyForm({ customerEmail, customerPhone }: CouponApplyFor
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="text-sm font-semibold text-stone-900">Cupon</span>
+        <span className="text-sm font-semibold text-stone-900">Codigo para tu rutina</span>
         <div className="mt-3 flex gap-2">
           <input
             className="w-full rounded-full border border-stone-200 bg-white px-4 py-3 text-sm uppercase tracking-[0.12em] text-stone-700"
@@ -154,8 +154,8 @@ export function CouponApplyForm({ customerEmail, customerPhone }: CouponApplyFor
               <p className="font-semibold text-stone-900">{coupon.code}</p>
               <p className="mt-1 text-xs text-stone-500">
                 {coupon.freeShipping
-                  ? "Envio gratis confirmado en backend."
-                  : `Descuento validado: -${formatCurrency(discount)}`}
+                  ? "Envio protegido incluido."
+                  : `Ajuste aplicado: -${formatCurrency(discount)}`}
               </p>
             </div>
             <button

@@ -20,7 +20,7 @@ export function AddToCartButton({
   name,
   price,
   className,
-  label = "Agregar al carrito",
+  label = "Anadir a mi rutina",
 }: AddToCartButtonProps) {
   const addItem = useCartStore((state) => state.addItem);
   const [added, setAdded] = useState(false);
@@ -41,7 +41,7 @@ export function AddToCartButton({
       }}
       type="button"
     >
-      {added ? "Agregado" : label}
+      {added ? "Anadido" : label}
     </button>
   );
 }
