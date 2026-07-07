@@ -5,11 +5,11 @@ import { SkinRoutineGuide } from "@/components/quiz/skin-routine-guide";
 import { SkinQuizTrigger } from "@/components/quiz/skin-quiz-trigger";
 import { CheckCircleIcon } from "@/components/shared/icons";
 import { JsonLd } from "@/components/shared/json-ld";
+import { RatingStars } from "@/components/shared/rating-stars";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { EditorialFigure } from "@/components/store/editorial-figure";
 import { NeedCardLink } from "@/components/store/need-card-link";
 import { ProductCard } from "@/components/store/product-card";
-import { ReviewsShowcase } from "@/components/store/reviews-showcase";
 import {
   getCommercialSection,
   getDefaultCommercialContent,
@@ -17,8 +17,6 @@ import {
   resolveCommercialHref,
 } from "@/lib/commercial-content";
 import { getCommercialContent } from "@/lib/commercial-content-api";
-import { createEmptyReviewsSummary } from "@/lib/reviews";
-import { getReviewsSummary } from "@/lib/reviews-api";
 import {
   absoluteUrl,
   buildBreadcrumbJsonLd,
@@ -38,10 +36,9 @@ export const metadata: Metadata = buildPublicMetadata({
 });
 
 export default async function HomePage() {
-  const [catalogProducts, storefrontBrands, reviewsSummaryResult, commercialContent] = await Promise.all([
+  const [catalogProducts, storefrontBrands, commercialContent] = await Promise.all([
     getProducts(),
     getBrands(),
-    getReviewsSummary(),
     getCommercialContent(),
   ]);
 
@@ -54,7 +51,7 @@ export default async function HomePage() {
   const featuredProductsSection = getCommercialSection(commercialContent, "featured_products");
   const shopNeedsSection = getCommercialSection(commercialContent, "shop_needs");
   const storySection = getCommercialSection(commercialContent, "science");
-  const reviewsSection = getCommercialSection(commercialContent, "reviews");
+  const testimonialsSection = getCommercialSection(commercialContent, "testimonials");
   const routineGuideSteps =
     commercialContent.routineGuideSteps.length > 0
       ? commercialContent.routineGuideSteps
@@ -63,7 +60,15 @@ export default async function HomePage() {
     commercialContent.sciencePoints.length > 0
       ? commercialContent.sciencePoints.slice(0, 3)
       : defaultCommercialContent.sciencePoints.slice(0, 3);
-  const reviewsSummary = reviewsSummaryResult.ok ? reviewsSummaryResult.data : createEmptyReviewsSummary();
+  const homeTestimonials =
+    commercialContent.homeTestimonials.length > 0
+      ? commercialContent.homeTestimonials
+      : defaultCommercialContent.homeTestimonials;
+  const leadTestimonial = homeTestimonials[0] ?? defaultCommercialContent.homeTestimonials[0];
+  const supportingTestimonials =
+    homeTestimonials.length > 1
+      ? homeTestimonials.slice(1, 3)
+      : defaultCommercialContent.homeTestimonials.slice(1, 3);
   const heroTitleLines = hero.title.split(". ");
   const homeSchemas = [
     buildOrganizationJsonLd(),
@@ -295,14 +300,63 @@ export default async function HomePage() {
           </section>
         ) : null}
 
-        {reviewsSection?.active !== false ? (
-          <ReviewsShowcase
-            description={reviewsSection?.description ?? undefined}
-            eyebrow={reviewsSection?.eyebrow ?? undefined}
-            primaryCtaLabel={reviewsSection?.ctaLabel ?? undefined}
-            summary={reviewsSummary}
-            title={reviewsSection?.title ?? undefined}
-          />
+        {testimonialsSection?.active !== false ? (
+          <section className="grid gap-8 border-t border-stone-200 pt-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
+            <div className="space-y-4">
+              <p className="section-label">{testimonialsSection?.eyebrow ?? "Voces de la comunidad"}</p>
+              <h2 className="max-w-lg font-serif text-[2.6rem] leading-[0.98] text-stone-950">
+                {testimonialsSection?.title ?? "La confianza entra mejor cuando se lee como testimonio."}
+              </h2>
+              <p className="max-w-xl text-sm leading-7 text-stone-600">
+                {testimonialsSection?.description ?? "Historias reales de clientas que compran con mas criterio y menos ruido."}
+              </p>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+              <article className="rounded-[2.2rem] bg-[#efe4d8] p-6 sm:p-8">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/80 font-serif text-xl text-stone-950">
+                    {leadTestimonial.name
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((part) => part[0])
+                      .join("")}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-stone-900">{leadTestimonial.name}</p>
+                    <p className="text-sm text-stone-500">{leadTestimonial.city}</p>
+                  </div>
+                </div>
+                <RatingStars className="mt-6" rating={leadTestimonial.rating} />
+                <p className="mt-6 max-w-2xl font-serif text-[2rem] leading-[1.02] text-stone-950 sm:text-[2.45rem]">
+                  {leadTestimonial.text}
+                </p>
+                <p className="mt-6 text-sm text-stone-500">Compra verificada</p>
+              </article>
+
+              <div className="grid gap-4">
+                {supportingTestimonials.map((testimonial, index) => (
+                  <article className="rounded-[1.8rem] border border-stone-200 bg-white p-5" key={`${testimonial.name}-${index}`}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3e7dd] text-sm font-semibold text-stone-950">
+                        {testimonial.name
+                          .split(" ")
+                          .slice(0, 2)
+                          .map((part) => part[0])
+                          .join("")}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-stone-900">{testimonial.name}</p>
+                        <p className="text-xs text-stone-500">{testimonial.city}</p>
+                      </div>
+                    </div>
+                    <RatingStars className="mt-4" rating={testimonial.rating} />
+                    <p className="mt-4 text-sm leading-7 text-stone-700">{testimonial.text}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
         ) : null}
       </div>
     </>
