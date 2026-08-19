@@ -114,13 +114,13 @@ export default async function HomePage() {
       <div className="home-page mx-auto flex max-w-[1320px] flex-col gap-20 px-5 py-6 sm:px-6 lg:gap-24 lg:px-8 lg:py-10">
         {hero.isVisible ? (
           <section
-            className="grid gap-8 rounded-[2.8rem] border border-stone-200 bg-[rgba(255,252,248,0.92)] px-5 py-6 shadow-[0_30px_90px_rgba(28,20,16,0.06)] sm:px-6 sm:py-8 lg:grid-cols-[0.82fr_1.18fr] lg:gap-10 lg:px-8 lg:py-10"
+            className="grid gap-8 rounded-[2.8rem] border border-stone-200 bg-[rgba(255,252,248,0.92)] px-5 py-6 shadow-[0_30px_90px_rgba(28,20,16,0.06)] sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:grid-cols-[0.82fr_1.18fr] xl:gap-10"
             style={hero.backgroundColor ? { backgroundColor: hero.backgroundColor } : undefined}
           >
-            <div className="max-w-xl space-y-8 lg:py-4">
+            <div className="max-w-xl space-y-8 xl:py-4">
               <div className="space-y-4">
                 <p className="section-label">Home editorial</p>
-                <h1 className="font-serif text-[3rem] leading-[0.92] text-stone-950 sm:text-[4.2rem] lg:text-[5.15rem]">
+                <h1 className="font-serif text-[2.85rem] leading-[0.92] text-stone-950 sm:text-[4rem] lg:text-[4.65rem] xl:text-[5.15rem]">
                   {heroTitleLines.map((part, index) => (
                     <span key={`${part}-${index}`}>
                       {part}
@@ -196,7 +196,7 @@ export default async function HomePage() {
                   </p>
                 </article>
                 <EditorialFigure
-                  className="min-h-[320px]"
+                  className="min-h-[300px] sm:min-h-[320px]"
                   description="Espacio preparado para fotografia de textura, ingredient shot o still life real."
                   frame="texture"
                   label="Textura ligera"
@@ -207,7 +207,7 @@ export default async function HomePage() {
 
               <div className="grid gap-4">
                 <EditorialFigure
-                  className="min-h-[420px]"
+                  className="min-h-[340px] sm:min-h-[420px]"
                   description="Composicion de portada lista para reemplazar con fotografia oficial sin rehacer el layout."
                   frame="portrait"
                   label="Hero frame"

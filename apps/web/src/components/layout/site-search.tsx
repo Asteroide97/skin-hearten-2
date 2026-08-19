@@ -104,7 +104,7 @@ export function SiteSearch({
           className={cn(
             "flex items-center gap-3 rounded-full border transition",
             isHeaderVariant
-              ? "border-[#f1b2a5] bg-white px-4 py-2 shadow-[0_14px_36px_rgba(73,39,34,0.12)] focus-within:border-stone-900 sm:px-5 sm:py-2.5"
+              ? "gap-2 border-[#f1b2a5] bg-white px-3 py-1.5 shadow-[0_14px_36px_rgba(73,39,34,0.12)] focus-within:border-stone-900 sm:gap-3 sm:px-5 sm:py-2.5"
               : "border-stone-200 bg-white/95 px-4 py-2.5 shadow-[0_12px_28px_rgba(32,25,20,0.04)] focus-within:border-stone-400",
           )}
         >
@@ -113,7 +113,7 @@ export function SiteSearch({
             className={cn(
               "w-full bg-transparent outline-none",
               isHeaderVariant
-                ? "text-sm text-stone-900 placeholder:text-stone-500 sm:text-base"
+                ? "text-[13px] text-stone-900 placeholder:text-[13px] placeholder:text-stone-500 sm:text-base sm:placeholder:text-base"
                 : "text-sm text-stone-800 placeholder:text-stone-400",
             )}
             id="site-search"
@@ -136,7 +136,7 @@ export function SiteSearch({
             className={cn(
               "shrink-0 rounded-full font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
               isHeaderVariant
-                ? "bg-stone-950 px-4 py-3 text-xs text-white hover:bg-stone-800 sm:px-6 sm:text-sm"
+                ? "bg-stone-950 px-3 py-2.5 text-[11px] text-white hover:bg-stone-800 sm:px-6 sm:py-3 sm:text-sm"
                 : "btn-primary px-4 py-2.5 text-xs",
             )}
             type="submit"

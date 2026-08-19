@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { SiteSearch } from "@/components/layout/site-search";
 import { SkinQuizModal } from "@/components/quiz/skin-quiz-modal";
@@ -40,12 +41,17 @@ function isActivePath(pathname: string, href: string) {
 
 export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderProps) {
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const itemCount = useCartStore((state) =>
     state.items.reduce((sum, item) => sum + item.quantity, 0),
   );
   const primaryNavItems = sortCommercialItems(commercialContent.navigation).filter((item) => item.active);
   const quickAccessItems = sortCommercialItems(commercialContent.quickLinks).filter((item) => item.active);
   const supportWhatsAppUrl = commercialContent.header.supportWhatsAppUrl?.trim() || null;
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   return (
     <>
@@ -95,9 +101,26 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
               </nav>
 
               <div className="flex shrink-0 items-center gap-2">
+                <button
+                  aria-controls="mobile-site-menu"
+                  aria-expanded={isMobileMenuOpen}
+                  aria-label={isMobileMenuOpen ? "Cerrar menu principal" : "Abrir menu principal"}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-950 transition hover:border-stone-300 hover:bg-[#fffdfb] md:hidden"
+                  onClick={() => {
+                    setIsMobileMenuOpen((current) => !current);
+                  }}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="flex h-3.5 w-4 flex-col justify-between">
+                    <span className="block h-[1.5px] rounded-full bg-current" />
+                    <span className="block h-[1.5px] rounded-full bg-current" />
+                    <span className="block h-[1.5px] rounded-full bg-current" />
+                  </span>
+                  <span>{isMobileMenuOpen ? "Cerrar" : "Menu"}</span>
+                </button>
                 {supportWhatsAppUrl ? (
                   <Link
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-950 transition hover:border-stone-300 hover:bg-[#fffdfb]"
+                    className="hidden items-center justify-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-950 transition hover:border-stone-300 hover:bg-[#fffdfb] sm:inline-flex"
                     href={supportWhatsAppUrl}
                     target="_blank"
                   >
@@ -116,7 +139,58 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
               </div>
             </div>
 
-            <nav className="mt-4 flex gap-2 overflow-x-auto lg:hidden">
+            <div
+              className={`grid overflow-hidden transition-[grid-template-rows,opacity,margin] duration-200 md:hidden ${
+                isMobileMenuOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+              }`}
+            >
+              <div className="min-h-0">
+                <div
+                  className="rounded-[1.8rem] border border-stone-200 bg-white/85 p-3 shadow-[0_18px_44px_rgba(28,20,16,0.06)]"
+                  id="mobile-site-menu"
+                >
+                  <nav className="grid gap-2 min-[430px]:grid-cols-2">
+                    {primaryNavItems.map((item) => {
+                      const href = resolveCommercialHref({ type: item.type, value: item.value });
+                      const isActive = isActivePath(pathname, href);
+                      const isAccent = item.name.toUpperCase() === "OFERTA";
+
+                      return (
+                        <Link
+                          className={`inline-flex min-h-11 items-center justify-between rounded-[1.15rem] px-3.5 py-3 text-sm transition ${
+                            isAccent
+                              ? isActive
+                                ? "bg-stone-950 text-white"
+                                : "border border-stone-200 bg-[#faf7f2] font-semibold text-stone-950"
+                              : isActive
+                                ? "bg-[#f7efe7] font-semibold text-stone-950"
+                                : "border border-stone-200 bg-white text-stone-700"
+                          }`}
+                          href={href}
+                          key={`mobile-panel-${item.name}-${item.order}`}
+                        >
+                          <span>{item.name}</span>
+                          <span className="text-xs text-stone-500">Ir</span>
+                        </Link>
+                      );
+                    })}
+                  </nav>
+
+                  {supportWhatsAppUrl ? (
+                    <Link
+                      className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-stone-200 bg-[#fffaf6] px-3 py-2 text-sm font-semibold text-stone-950 transition hover:border-stone-300"
+                      href={supportWhatsAppUrl}
+                      target="_blank"
+                    >
+                      <WhatsAppIcon className="text-[#154f3b]" />
+                      <span>Asesoria por WhatsApp</span>
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <nav className="mt-4 hidden flex-wrap gap-2 md:flex lg:hidden">
               {primaryNavItems.map((item) => {
                 const href = resolveCommercialHref({ type: item.type, value: item.value });
                 const isActive = isActivePath(pathname, href);
@@ -124,7 +198,7 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
 
                 return (
                   <Link
-                    className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm transition ${
+                    className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-3.5 py-2.5 text-sm transition ${
                       isAccent
                         ? isActive
                           ? "bg-stone-950 text-white"
@@ -142,7 +216,7 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
               })}
             </nav>
 
-            <div className="mt-5 flex justify-center">
+            <div className="mt-4 flex justify-center sm:mt-5">
               <SiteSearch
                 catalogProducts={catalogProducts}
                 className="w-full max-w-4xl"
@@ -153,11 +227,11 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
         </div>
 
         <div className="border-b border-stone-200/70 bg-[rgba(255,251,246,0.92)]">
-          <div className="mx-auto flex max-w-[1320px] gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
+          <div className="scrollbar-none mx-auto flex max-w-[1320px] gap-2 overflow-x-auto px-4 py-3 sm:px-6 md:flex-wrap md:overflow-visible lg:px-8">
             {quickAccessItems.map((item) => (
               isCommercialQuizAction(item.action) ? (
                 <SkinQuizTrigger
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-950 transition hover:border-stone-300 hover:bg-[#fffdfb]"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-950 transition hover:border-stone-300 hover:bg-[#fffdfb] md:flex-1 md:justify-center"
                   key={`${item.name}-${item.order}`}
                   source="header"
                 >
@@ -168,7 +242,7 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
                 </SkinQuizTrigger>
               ) : (
                 <Link
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 transition hover:border-stone-300 hover:bg-[#fffdfb]"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 transition hover:border-stone-300 hover:bg-[#fffdfb] md:flex-1 md:justify-center"
                   href={resolveCommercialHref({ type: item.action, value: item.value })}
                   key={`${item.name}-${item.order}`}
                 >
