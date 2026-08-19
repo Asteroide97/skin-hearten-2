@@ -1,11 +1,22 @@
 import type { Metadata } from "next";
 
 export const SITE_NAME = "Skin Hearten";
-export const SITE_URL = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL ?? "https://skinhearten.mx");
+const DEFAULT_SITE_URL = "https://skinhearten.mx";
+
+export const SITE_URL = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
 export const DEFAULT_OG_IMAGE_PATH = "/opengraph-image";
 
-function normalizeSiteUrl(value: string) {
-  return value.trim().replace(/\/$/, "");
+function normalizeSiteUrl(value?: string) {
+  const trimmedValue = value?.trim();
+  if (!trimmedValue) {
+    return DEFAULT_SITE_URL;
+  }
+
+  try {
+    return new URL(trimmedValue).toString().replace(/\/$/, "");
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
 }
 
 export function absoluteUrl(path = "/") {
