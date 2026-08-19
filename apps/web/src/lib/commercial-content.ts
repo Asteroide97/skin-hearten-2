@@ -137,10 +137,9 @@ export function getDefaultCommercialContent(): CommercialContent {
     header: {
       logoText: "Skin Hearten",
       logoImage: null,
-      topLeftText: "Skin Hearten. Journal of skincare.",
-      topRightText: "Asesoria por WhatsApp y envios a todo Mexico",
-      supportWhatsAppUrl:
-        "https://wa.me/525500000000?text=Hola%20Skin%20Hearten%2C%20necesito%20asesoria%20para%20mi%20rutina.",
+      topLeftText: "Skincare curado para rutinas mas claras.",
+      topRightText: "Compra tranquila y enfoque en conversion real.",
+      supportWhatsAppUrl: null,
     },
     navigation: [
       { name: "Mas Vendidos", order: 0, active: true, type: "collection", value: "best-sellers" },
@@ -259,26 +258,22 @@ export function getDefaultCommercialContent(): CommercialContent {
       },
     ],
     banners: [
-      { key: "top_bar_left", title: "Banner superior", message: "Skin Hearten. Journal of skincare.", order: 0, active: true },
-      { key: "top_bar_right", title: "Envios", message: "Asesoria por WhatsApp y envios a todo Mexico", order: 1, active: true },
+      { key: "top_bar_left", title: "Banner superior", message: "Skincare curado para rutinas mas claras.", order: 0, active: true },
+      { key: "top_bar_right", title: "Envios", message: "Compra tranquila y enfoque en conversion real.", order: 1, active: true },
       { key: "promotion", title: "Promocion", message: "Compra con tranquilidad y soporte humano visible.", order: 2, active: false },
       { key: "seasonal", title: "Temporada", message: "Seleccion editorial para rutinas de verano y clima calido.", order: 3, active: false },
       {
         key: "whatsapp",
         title: "WhatsApp",
         message: "Asesoria especializada por WhatsApp",
-        value: "https://wa.me/525500000000?text=Hola%20Skin%20Hearten%2C%20necesito%20asesoria%20para%20mi%20rutina.",
+        value: "",
         order: 4,
-        active: true,
+        active: false,
       },
     ],
     footer: {
       introText: "Skincare seleccionado para rutinas mas claras, piel mas estable y una experiencia editorial que prioriza criterio.",
-      contactLines: [
-        "hola@skinhearten.com",
-        "WhatsApp: +52 55 0000 0000",
-        "Ciudad de Mexico, Mexico",
-      ],
+      contactLines: [],
       columns: [
         {
           title: "Explorar",
@@ -289,15 +284,8 @@ export function getDefaultCommercialContent(): CommercialContent {
           ],
         },
       ],
-      legalLinks: [
-        { label: "Aviso de privacidad", type: "url", value: "#" },
-        { label: "Terminos y condiciones", type: "url", value: "#" },
-        { label: "Politicas de envio", type: "url", value: "#" },
-      ],
-      socialLinks: [
-        { label: "Instagram", url: "https://instagram.com/skinhearten" },
-        { label: "WhatsApp", url: "https://wa.me/525500000000" },
-      ],
+      legalLinks: [],
+      socialLinks: [],
       noticeText: "Contenido comercial editable desde SuperAdmin con fallback seguro si la API no esta disponible.",
     },
     routineGuideSteps: [
@@ -344,26 +332,7 @@ export function getDefaultCommercialContent(): CommercialContent {
         description: "Peptidos, niacinamida, ceramidas o filtros: cada uno resuelve un momento distinto.",
       },
     ],
-    homeTestimonials: [
-      {
-        name: "Mariana Gonzalez",
-        city: "Ciudad de Mexico",
-        rating: 5,
-        text: "Pude comprar por problema de piel, no por moda. Encontre manchas y protector solar en minutos y el checkout se sintio serio.",
-      },
-      {
-        name: "Lucia Herrera",
-        city: "Monterrey",
-        rating: 5,
-        text: "La navegacion en movil se siente muy clara. Los productos tienen suficiente informacion para comprar con confianza sin salir a buscar resenas.",
-      },
-      {
-        name: "Daniela Huerta",
-        city: "Guadalajara",
-        rating: 4.8,
-        text: "La curaduria se ve premium y coherente. WhatsApp visible y beneficios claros me dieron seguridad antes de pagar.",
-      },
-    ],
+    homeTestimonials: [],
   };
 }
 

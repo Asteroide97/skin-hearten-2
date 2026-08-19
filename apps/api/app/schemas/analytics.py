@@ -7,17 +7,26 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 AllowedAnalyticsEventName = Literal[
+    "home_viewed",
+    "hero_cta_clicked",
     "site_visit",
     "search_submitted",
-    "skin_quiz_started",
-    "skin_quiz_completed",
+    "quiz_started",
+    "quiz_question_answered",
+    "quiz_completed",
+    "quiz_result_viewed",
     "product_viewed",
+    "product_added_to_cart",
+    "product_removed_from_cart",
+    "recommendation_clicked",
     "routine_builder_opened",
     "routine_full_added",
     "routine_single_added",
     "cart_viewed",
     "checkout_started",
     "checkout_completed",
+    "newsletter_subscribed",
+    "review_viewed",
     "review_started",
     "review_submitted",
 ]

@@ -1,4 +1,5 @@
 import type { GuidedCatalogProduct } from "@/lib/guided-catalog";
+import { buildSupportWhatsAppHref } from "@/lib/support";
 
 export const SKIN_QUIZ_COMPLETED_KEY = "skin_quiz_completed";
 export const SKIN_QUIZ_DISMISSED_UNTIL_KEY = "skin_quiz_dismissed_until";
@@ -8,7 +9,6 @@ export const SKIN_QUIZ_RESULT_KEY = "skin_quiz_result";
 export const SKIN_QUIZ_STORAGE_UPDATED_EVENT = "skin-quiz-storage-updated";
 export const SKIN_QUIZ_WHATSAPP_MESSAGE =
   "Hola, hice el Skin Quiz y quiero recibir ayuda con mi rutina recomendada.";
-export const SKIN_QUIZ_WHATSAPP_NUMBER = "525500000000";
 
 const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000;
 const storageFallback = new Map<string, string>();
@@ -443,7 +443,7 @@ export function shouldAutoOpenSkinQuiz(now = Date.now()) {
 
   const dismissedUntil = getSkinQuizDismissedUntil();
   if (!dismissedUntil) {
-    return true;
+    return false;
   }
 
   const dismissedTimestamp = new Date(dismissedUntil).getTime();
@@ -742,7 +742,7 @@ export function getSkinQuizDismissedWindow() {
 }
 
 export function getSkinQuizWhatsAppHref() {
-  return `https://wa.me/${SKIN_QUIZ_WHATSAPP_NUMBER}?text=${encodeURIComponent(SKIN_QUIZ_WHATSAPP_MESSAGE)}`;
+  return buildSupportWhatsAppHref(SKIN_QUIZ_WHATSAPP_MESSAGE);
 }
 
 function getSkinQuizLeadEndpoint() {

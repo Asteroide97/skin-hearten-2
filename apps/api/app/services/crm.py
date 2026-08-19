@@ -13,6 +13,7 @@ from app.models import Base, CRMContact, CRMEvent, CRMNote, CRMTask, Customer, O
 from app.models.enums import CRMLifecycleStatus, CRMTaskStatus
 from app.schemas.checkout import CheckoutRequest
 from app.schemas.crm import CRMContactUpdate, CRMNoteCreate, CRMTaskCreate, CRMTaskUpdate
+from app.schemas.newsletter import NewsletterSubscriptionCreate
 from app.schemas.skin_quiz import SkinQuizLeadCreate
 from app.services.crm_reminders import (
     create_post_purchase_reminder_from_order,
@@ -507,6 +508,92 @@ def upsert_contact_from_skin_quiz_lead(
         except Exception:
             db.rollback()
         return _serialize_contact_summary(contact)
+
+
+def subscribe_newsletter_contact(
+    db: Session,
+    *,
+    payload: NewsletterSubscriptionCreate,
+) -> dict[str, Any]:
+    now = datetime.now(timezone.utc)
+
+    try:
+        _ensure_crm_tables()
+        contact = _find_db_contact(db, email=payload.email, whatsapp=None)
+        if not contact:
+            contact = CRMContact(
+                first_name=payload.first_name.strip(),
+                last_name=None,
+                email=_normalize_email(str(payload.email)),
+                whatsapp=None,
+                source=payload.source,
+                lifecycle_status=CRMLifecycleStatus.LEAD,
+                accepted_marketing=True,
+                first_seen_at=now,
+                last_seen_at=now,
+            )
+        else:
+            contact.first_name = contact.first_name or payload.first_name.strip()
+            contact.email = _normalize_email(str(payload.email)) or contact.email
+            if str(contact.lifecycle_status) not in {"customer", "repeat_customer"}:
+                contact.lifecycle_status = CRMLifecycleStatus.LEAD
+            contact.source = payload.source
+            contact.accepted_marketing = True
+            contact.last_seen_at = now
+
+        db.add(contact)
+        db.commit()
+        db.refresh(contact)
+
+        _safe_record_event(
+            db,
+            contact_id=contact.id,
+            event_type="newsletter_subscribed",
+            payload_json={"source": payload.source},
+            source="newsletter",
+        )
+
+        return {
+            "contact_id": int(contact.id),
+            "created_at": now,
+            "source": payload.source,
+            "status": "subscribed",
+        }
+    except SQLAlchemyError:
+        db.rollback()
+        existing = find_mock_crm_contact(email=str(payload.email), whatsapp=None)
+        contact = upsert_mock_crm_contact(
+            {
+                "first_name": payload.first_name.strip(),
+                "last_name": existing.get("last_name") if existing else None,
+                "email": _normalize_email(str(payload.email)),
+                "whatsapp": existing.get("whatsapp") if existing else None,
+                "source": payload.source,
+                "lifecycle_status": (
+                    existing.get("lifecycle_status")
+                    if existing and existing.get("lifecycle_status") in {"customer", "repeat_customer"}
+                    else "lead"
+                ),
+                "skin_type": existing.get("skin_type") if existing else None,
+                "main_goal": existing.get("main_goal") if existing else None,
+                "age_range": existing.get("age_range") if existing else None,
+                "accepted_marketing": True,
+                "last_seen_at": now,
+            }
+        )
+        _record_crm_event_fallback(
+            contact_id=contact["id"],
+            anonymous_id=None,
+            event_type="newsletter_subscribed",
+            payload_json={"source": payload.source},
+            source="newsletter",
+        )
+        return {
+            "contact_id": int(contact["id"]),
+            "created_at": now,
+            "source": payload.source,
+            "status": "subscribed",
+        }
 
 
 def upsert_contact_from_checkout(

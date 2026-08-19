@@ -65,6 +65,10 @@ function SiteVisitTracker({ pathname }: { pathname: string }) {
       referrer: typeof document !== "undefined" ? document.referrer || null : null,
       source,
     });
+
+    if (pathname === "/") {
+      trackEvent("home_viewed", { source: "home" });
+    }
   }, [pathname, searchKey]);
 
   return null;

@@ -80,7 +80,15 @@ export function CartPage() {
                 <button
                   aria-label={`Quitar ${item.name} de tu rutina`}
                   className="rounded-full border border-stone-300 px-4 py-2 text-sm text-stone-700"
-                  onClick={() => removeItem(item.productId)}
+                  onClick={() => {
+                    trackEvent("product_removed_from_cart", {
+                      product_id: item.productId,
+                      product_name: item.name,
+                      quantity: item.quantity,
+                      price: item.price,
+                    });
+                    removeItem(item.productId);
+                  }}
                   type="button"
                 >
                   Quitar

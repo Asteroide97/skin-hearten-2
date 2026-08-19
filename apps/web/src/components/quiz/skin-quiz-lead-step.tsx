@@ -63,7 +63,7 @@ export function SkinQuizLeadStep({ defaultValues, onSkip, onSubmit }: SkinQuizLe
             error={form.formState.errors.whatsapp?.message}
             label="WhatsApp"
             name="whatsapp"
-            placeholder="+52 55 0000 0000"
+            placeholder="Tu numero con lada"
             register={form.register}
           />
           <div className="sm:col-span-2">

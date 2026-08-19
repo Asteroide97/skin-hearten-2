@@ -9,6 +9,8 @@ export type GuidedCatalogProduct = Pick<
   | "category"
   | "price"
   | "compareAtPrice"
+  | "image"
+  | "images"
   | "stock"
   | "description"
   | "benefits"
@@ -32,6 +34,8 @@ export function toGuidedCatalogProduct(product: Product): GuidedCatalogProduct {
     category: product.category,
     price: product.price,
     compareAtPrice: product.compareAtPrice,
+    image: product.image,
+    images: product.images,
     stock: product.stock,
     description: product.description,
     benefits: product.benefits,

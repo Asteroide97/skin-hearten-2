@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { UseFormRegisterReturn } from "react-hook-form";
 
@@ -49,6 +49,14 @@ export function ProductReviewsSection({
   const selectedRating = form.watch("rating");
   const hasReviews = initialSummary.reviewCount > 0;
   const featuredReviews = initialSummary.reviews.slice(0, 3);
+
+  useEffect(() => {
+    trackEvent("review_viewed", {
+      product_id: productRef,
+      product_name: productName,
+      source: "product",
+    });
+  }, [productName, productRef]);
 
   async function handleSubmit(values: ProductReviewFormValues) {
     const payload: ProductReviewCreateInput = {

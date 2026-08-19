@@ -23,6 +23,14 @@ export type PublicAnalyticsSource =
 export type RoutineBuilderAnalyticsSource = "product" | "category" | "skin_quiz";
 
 export type AnalyticsEventMap = {
+  home_viewed: {
+    source: "home";
+  };
+  hero_cta_clicked: {
+    destination: string;
+    label: string;
+    location: "hero";
+  };
   site_visit: {
     source?: PublicAnalyticsSource;
     referrer?: string | null;
@@ -39,7 +47,13 @@ export type AnalyticsEventMap = {
     category: string;
     price: number;
   };
-  add_to_cart: {
+  product_added_to_cart: {
+    product_id: string;
+    product_name: string;
+    quantity: number;
+    price: number;
+  };
+  product_removed_from_cart: {
     product_id: string;
     product_name: string;
     quantity: number;
@@ -102,6 +116,16 @@ export type AnalyticsEventMap = {
     recommended_product_ids: string[];
     source?: SkinQuizAnalyticsSource;
   };
+  quiz_result_viewed: {
+    goal:
+      | "manchas"
+      | "acne"
+      | "lineas_expresion"
+      | "hidratacion"
+      | "luminosidad"
+      | "proteccion_solar";
+    source?: SkinQuizAnalyticsSource;
+  };
   skin_quiz_dismissed: {
     source: SkinQuizAnalyticsSource;
     reason: "now_later" | "close";
@@ -144,6 +168,11 @@ export type AnalyticsEventMap = {
       | "hidratacion"
       | "luminosidad"
       | "proteccion_solar";
+  };
+  recommendation_clicked: {
+    destination: string;
+    product_ids: string[];
+    source: "skin_quiz";
   };
   skin_quiz_lead_sync_started: {
     source: SkinQuizAnalyticsSource;
@@ -202,6 +231,11 @@ export type AnalyticsEventMap = {
     product_name?: string;
     source: "product" | "verified_reviews";
   };
+  review_viewed: {
+    product_id?: string;
+    product_name?: string;
+    source: "home" | "product";
+  };
   review_submitted: {
     product_id?: string;
     product_name?: string;
@@ -209,22 +243,34 @@ export type AnalyticsEventMap = {
     source: "product" | "verified_reviews";
     verified: boolean;
   };
+  newsletter_subscribed: {
+    source: "home" | "footer";
+  };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
 export type AnalyticsEventPayload<TEvent extends AnalyticsEventName> = AnalyticsEventMap[TEvent];
 export type PublicAnalyticsEventName =
+  | "home_viewed"
+  | "hero_cta_clicked"
   | "site_visit"
   | "search_submitted"
-  | "skin_quiz_started"
-  | "skin_quiz_completed"
+  | "quiz_started"
+  | "quiz_question_answered"
+  | "quiz_completed"
+  | "quiz_result_viewed"
   | "product_viewed"
+  | "product_added_to_cart"
+  | "product_removed_from_cart"
+  | "recommendation_clicked"
   | "routine_builder_opened"
   | "routine_full_added"
   | "routine_single_added"
   | "cart_viewed"
   | "checkout_started"
   | "checkout_completed"
+  | "newsletter_subscribed"
+  | "review_viewed"
   | "review_started"
   | "review_submitted";
 
@@ -378,6 +424,25 @@ function buildTransportEvent<TEvent extends AnalyticsEventName>(
   event: AnyAnalyticsTrackedEvent,
 ): AnalyticsTransportEvent | null {
   switch (event.name) {
+    case "home_viewed":
+      return {
+        eventName: "home_viewed",
+        path: event.path,
+        sessionId: event.sessionId,
+        source: event.payload.source,
+      };
+    case "hero_cta_clicked":
+      return {
+        eventName: "hero_cta_clicked",
+        metadata: {
+          destination: event.payload.destination,
+          label: event.payload.label,
+          location: event.payload.location,
+        },
+        path: event.path,
+        sessionId: event.sessionId,
+        source: event.payload.location,
+      };
     case "site_visit":
       return omitUndefinedTransport({
         eventName: "site_visit",
@@ -397,19 +462,40 @@ function buildTransportEvent<TEvent extends AnalyticsEventName>(
       };
     case "skin_quiz_started":
       return {
-        eventName: "skin_quiz_started",
+        eventName: "quiz_started",
         path: event.path,
         sessionId: event.sessionId,
         source: event.payload.source,
       };
+    case "skin_quiz_step_answered":
+      return {
+        eventName: "quiz_question_answered",
+        metadata: {
+          answer: event.payload.answer,
+          step_id: event.payload.step_id,
+          step_number: event.payload.step_number,
+        },
+        path: event.path,
+        sessionId: event.sessionId,
+      };
     case "skin_quiz_completed":
       return omitUndefinedTransport({
-        eventName: "skin_quiz_completed",
+        eventName: "quiz_completed",
         metadata: {
           age_range: event.payload.age_range,
           goal: event.payload.goal,
           recommended_product_ids: event.payload.recommended_product_ids,
           skin_type: event.payload.skin_type,
+        },
+        path: event.path,
+        sessionId: event.sessionId,
+        source: event.payload.source,
+      });
+    case "quiz_result_viewed":
+      return omitUndefinedTransport({
+        eventName: "quiz_result_viewed",
+        metadata: {
+          goal: event.payload.goal,
         },
         path: event.path,
         sessionId: event.sessionId,
@@ -427,6 +513,41 @@ function buildTransportEvent<TEvent extends AnalyticsEventName>(
         path: event.path,
         productId: toPositiveInt(event.payload.product_id),
         sessionId: event.sessionId,
+      };
+    case "product_added_to_cart":
+      return {
+        eventName: "product_added_to_cart",
+        metadata: {
+          price: event.payload.price,
+          product_name: event.payload.product_name,
+          quantity: event.payload.quantity,
+        },
+        path: event.path,
+        productId: toPositiveInt(event.payload.product_id),
+        sessionId: event.sessionId,
+      };
+    case "product_removed_from_cart":
+      return {
+        eventName: "product_removed_from_cart",
+        metadata: {
+          price: event.payload.price,
+          product_name: event.payload.product_name,
+          quantity: event.payload.quantity,
+        },
+        path: event.path,
+        productId: toPositiveInt(event.payload.product_id),
+        sessionId: event.sessionId,
+      };
+    case "recommendation_clicked":
+      return {
+        eventName: "recommendation_clicked",
+        metadata: {
+          destination: event.payload.destination,
+          product_ids: event.payload.product_ids,
+        },
+        path: event.path,
+        sessionId: event.sessionId,
+        source: event.payload.source,
       };
     case "routine_builder_opened":
       return {
@@ -498,6 +619,24 @@ function buildTransportEvent<TEvent extends AnalyticsEventName>(
         path: event.path,
         sessionId: event.sessionId,
       };
+    case "newsletter_subscribed":
+      return {
+        eventName: "newsletter_subscribed",
+        path: event.path,
+        sessionId: event.sessionId,
+        source: event.payload.source,
+      };
+    case "review_viewed":
+      return omitUndefinedTransport({
+        eventName: "review_viewed",
+        metadata: {
+          product_name: event.payload.product_name,
+        },
+        path: event.path,
+        productId: toPositiveInt(event.payload.product_id),
+        sessionId: event.sessionId,
+        source: event.payload.source,
+      });
     case "review_started":
       return omitUndefinedTransport({
         eventName: "review_started",

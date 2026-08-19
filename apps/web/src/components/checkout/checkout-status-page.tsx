@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { SectionHeading } from "@/components/shared/section-heading";
 import { trackEvent } from "@/lib/analytics";
+import { buildCustomerOrderSupportWhatsAppHref } from "@/lib/customer-orders";
 import {
   hasCheckoutSuccessBeenTracked,
   markCheckoutSuccessTracked,
@@ -14,9 +15,6 @@ import {
 } from "@/lib/checkout";
 import { formatCurrency } from "@/lib/format";
 import { getCartItemCount, useCartStore } from "@/store/cart-store";
-
-const whatsappHref =
-  "https://wa.me/525500000000?text=Hola%20Skin%20Hearten%2C%20necesito%20ayuda%20con%20mi%20pedido.";
 
 type CheckoutStatusVariant = "error" | "pending" | "success";
 
@@ -41,7 +39,7 @@ const contentByVariant: Record<
   error: {
     eyebrow: "Pago no completado",
     title: "No pudimos confirmar tu pago",
-    description: "Tu carrito sigue intacto para que puedas intentarlo otra vez o pedir ayuda por WhatsApp.",
+    description: "Tu carrito sigue intacto para que puedas intentarlo otra vez desde checkout.",
   },
 };
 
@@ -94,6 +92,7 @@ export function CheckoutStatusPage({
 
   const content = contentByVariant[variant];
   const visibleOrderNumber = order?.orderNumber ?? orderNumberFromQuery;
+  const supportWhatsAppHref = buildCustomerOrderSupportWhatsAppHref(visibleOrderNumber ?? undefined);
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-5 py-8 sm:px-6 lg:px-8">
@@ -160,14 +159,16 @@ export function CheckoutStatusPage({
         </div>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <a
-            className="inline-flex items-center justify-center rounded-full bg-stone-950 px-5 py-3 text-sm font-medium text-white"
-            href={whatsappHref}
-            rel="noreferrer"
-            target="_blank"
-          >
-            WhatsApp para soporte
-          </a>
+          {supportWhatsAppHref ? (
+            <a
+              className="inline-flex items-center justify-center rounded-full bg-stone-950 px-5 py-3 text-sm font-medium text-white"
+              href={supportWhatsAppHref}
+              rel="noreferrer"
+              target="_blank"
+            >
+              WhatsApp para soporte
+            </a>
+          ) : null}
           <Link
             className="inline-flex items-center justify-center rounded-full border border-stone-300 px-5 py-3 text-sm font-medium text-stone-800"
             href={variant === "error" ? "/checkout" : "/productos"}

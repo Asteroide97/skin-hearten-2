@@ -93,8 +93,6 @@ export type CustomerOrderDetail = {
   total: number;
 };
 
-const SUPPORT_WHATSAPP_NUMBER = "525500000000";
-
 export function getCustomerOrderStatusLabel(status: CustomerOrderStatus) {
   switch (status) {
     case "pending":
@@ -154,5 +152,6 @@ export function buildCustomerOrderSupportWhatsAppHref(orderNumber?: string) {
   const message = orderNumber
     ? `Hola Skin Hearten, necesito ayuda con mi pedido ${orderNumber}.`
     : "Hola Skin Hearten, necesito ayuda con uno de mis pedidos.";
-  return `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  return buildSupportWhatsAppHref(message);
 }
+import { buildSupportWhatsAppHref } from "@/lib/support";

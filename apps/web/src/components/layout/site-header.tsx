@@ -45,22 +45,20 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
   );
   const primaryNavItems = sortCommercialItems(commercialContent.navigation).filter((item) => item.active);
   const quickAccessItems = sortCommercialItems(commercialContent.quickLinks).filter((item) => item.active);
-  const supportWhatsAppUrl =
-    commercialContent.header.supportWhatsAppUrl ??
-    "https://wa.me/525500000000?text=Hola%20Skin%20Hearten%2C%20necesito%20asesoria%20para%20mi%20rutina.";
+  const supportWhatsAppUrl = commercialContent.header.supportWhatsAppUrl?.trim() || null;
 
   return (
     <>
       <SkinQuizModal catalogProducts={catalogProducts} />
-      <header className="sticky top-0 z-30 border-b border-stone-200 bg-white shadow-[0_12px_34px_rgba(28,20,16,0.06)]">
-        <div className="border-b border-stone-200 bg-[#fff7f0]">
-          <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-3 px-4 py-2 text-[11px] tracking-[0.08em] text-stone-700 sm:px-6 lg:px-8">
-            <p className="truncate">{commercialContent.header.topLeftText}</p>
-            <p className="hidden shrink-0 sm:block">{commercialContent.header.topRightText}</p>
+      <header className="sticky top-0 z-30 border-b border-stone-200/90 bg-[rgba(250,247,242,0.94)] shadow-[0_16px_36px_rgba(28,20,16,0.05)] backdrop-blur-xl">
+        <div className="border-b border-stone-200/80 bg-[#fbf7f2]">
+          <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-3 px-4 py-2 text-[11px] tracking-[0.08em] text-stone-600 sm:px-6 lg:px-8">
+            {commercialContent.header.topLeftText ? <p className="truncate">{commercialContent.header.topLeftText}</p> : <span />}
+            {commercialContent.header.topRightText ? <p className="hidden shrink-0 sm:block">{commercialContent.header.topRightText}</p> : null}
           </div>
         </div>
 
-        <div className="border-b border-[#ef8f7b] bg-[#ff9b88]">
+        <div className="border-b border-stone-200/80 bg-[linear-gradient(180deg,rgba(255,252,248,0.95),rgba(249,243,237,0.96))]">
           <div className="mx-auto max-w-[1320px] px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-3 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-8">
               <Link
@@ -82,10 +80,10 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
                         isAccent
                           ? isActive
                             ? "bg-stone-950 text-white"
-                            : "bg-white/28 font-semibold text-stone-950 hover:bg-white/48"
+                            : "border border-stone-200 bg-white font-semibold text-stone-950 hover:border-stone-300"
                           : isActive
-                            ? "bg-white/85 font-semibold text-stone-950"
-                            : "text-stone-900 hover:bg-white/35"
+                            ? "bg-white font-semibold text-stone-950 shadow-[0_10px_24px_rgba(28,20,16,0.05)]"
+                            : "text-stone-700 hover:bg-white/80 hover:text-stone-950"
                       }`}
                       href={href}
                       key={`${item.name}-${item.order}`}
@@ -97,14 +95,16 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
               </nav>
 
               <div className="flex shrink-0 items-center gap-2">
-                <Link
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/55 bg-white/35 px-3 py-2 text-sm font-semibold text-stone-950 transition hover:bg-white/55"
-                  href={supportWhatsAppUrl}
-                  target="_blank"
-                >
-                  <WhatsAppIcon className="text-[#154f3b]" />
-                  <span className="hidden sm:inline">WhatsApp</span>
-                </Link>
+                {supportWhatsAppUrl ? (
+                  <Link
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-950 transition hover:border-stone-300 hover:bg-[#fffdfb]"
+                    href={supportWhatsAppUrl}
+                    target="_blank"
+                  >
+                    <WhatsAppIcon className="text-[#154f3b]" />
+                    <span className="hidden sm:inline">WhatsApp</span>
+                  </Link>
+                ) : null}
                 <Link
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-stone-800 sm:px-4"
                   href="/carrito"
@@ -128,10 +128,10 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
                       isAccent
                         ? isActive
                           ? "bg-stone-950 text-white"
-                          : "bg-white/28 font-semibold text-stone-950"
+                          : "border border-stone-200 bg-white font-semibold text-stone-950"
                         : isActive
-                          ? "bg-white/85 font-semibold text-stone-950"
-                          : "bg-white/18 text-stone-900"
+                          ? "bg-white font-semibold text-stone-950 shadow-[0_10px_24px_rgba(28,20,16,0.05)]"
+                          : "border border-stone-200 bg-[rgba(255,255,255,0.78)] text-stone-700"
                     }`}
                     href={href}
                     key={`mobile-${item.name}-${item.order}`}
@@ -152,27 +152,27 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
           </div>
         </div>
 
-        <div className="border-b border-stone-200 bg-[#fff8f2]">
+        <div className="border-b border-stone-200/70 bg-[rgba(255,251,246,0.92)]">
           <div className="mx-auto flex max-w-[1320px] gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
             {quickAccessItems.map((item) => (
               isCommercialQuizAction(item.action) ? (
                 <SkinQuizTrigger
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#ef8f7b] bg-[#ffe6df] px-3 py-2 text-sm font-semibold text-stone-950 transition hover:bg-[#ffd8ce]"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-950 transition hover:border-stone-300 hover:bg-[#fffdfb]"
                   key={`${item.name}-${item.order}`}
                   source="header"
                 >
-                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white/65 px-2 text-[10px] font-semibold text-stone-900">
+                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[#f6eee8] px-2 text-[10px] font-semibold text-stone-900">
                     {item.icon ?? "Q"}
                   </span>
                   <span>{item.name}</span>
                 </SkinQuizTrigger>
               ) : (
                 <Link
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 transition hover:border-stone-400 hover:bg-[#fffdfb]"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 transition hover:border-stone-300 hover:bg-[#fffdfb]"
                   href={resolveCommercialHref({ type: item.action, value: item.value })}
                   key={`${item.name}-${item.order}`}
                 >
-                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[#ffe3da] px-2 text-[10px] font-semibold text-stone-900">
+                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[#f6eee8] px-2 text-[10px] font-semibold text-stone-900">
                     {item.icon}
                   </span>
                   <span>{item.name}</span>

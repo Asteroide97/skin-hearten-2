@@ -106,21 +106,7 @@ export function buildOrganizationJsonLd() {
     image: absoluteUrl(DEFAULT_OG_IMAGE_PATH),
     description:
       "Skincare premium con enfoque editorial para manchas, antiedad, hidratacion, sensibilidad y proteccion solar en Mexico.",
-    email: "hola@skinhearten.com",
     areaServed: "MX",
-    sameAs: [
-      "https://www.instagram.com/skinhearten",
-      "https://www.facebook.com/skinhearten",
-    ],
-    contactPoint: [
-      {
-        "@type": "ContactPoint",
-        contactType: "customer support",
-        email: "hola@skinhearten.com",
-        areaServed: "MX",
-        availableLanguage: ["es"],
-      },
-    ],
   };
 }
 

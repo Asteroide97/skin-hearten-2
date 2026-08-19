@@ -12,10 +12,8 @@ import {
   type StoredCheckoutOrder,
 } from "@/lib/checkout";
 import { trackEvent } from "@/lib/analytics";
+import { buildCustomerOrderSupportWhatsAppHref } from "@/lib/customer-orders";
 import { formatCurrency } from "@/lib/format";
-
-const whatsappHref =
-  "https://wa.me/525500000000?text=Hola%20Skin%20Hearten%2C%20tengo%20dudas%20sobre%20mi%20pedido.";
 
 export default function CheckoutThankYouPage() {
   const [order, setOrder] = useState<StoredCheckoutOrder | null>(null);
@@ -39,6 +37,8 @@ export default function CheckoutThankYouPage() {
     });
     markCheckoutSuccessTracked(latestOrder.orderId);
   }, []);
+
+  const supportWhatsAppHref = buildCustomerOrderSupportWhatsAppHref(order?.orderNumber);
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-5 py-8 sm:px-6 lg:px-8">
@@ -98,14 +98,16 @@ export default function CheckoutThankYouPage() {
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a
-              className="inline-flex items-center justify-center rounded-full bg-stone-950 px-5 py-3 text-sm font-medium text-white"
-              href={whatsappHref}
-              rel="noreferrer"
-              target="_blank"
-            >
-              WhatsApp para dudas
-            </a>
+            {supportWhatsAppHref ? (
+              <a
+                className="inline-flex items-center justify-center rounded-full bg-stone-950 px-5 py-3 text-sm font-medium text-white"
+                href={supportWhatsAppHref}
+                rel="noreferrer"
+                target="_blank"
+              >
+                WhatsApp para dudas
+              </a>
+            ) : null}
             <Link
               className="inline-flex items-center justify-center rounded-full border border-stone-300 px-5 py-3 text-sm font-medium text-stone-800"
               href="/productos"

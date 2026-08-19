@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { trackEvent } from "@/lib/analytics";
+import { passthroughImageLoader, resolveAssetUrl } from "@/lib/assets";
 import { formatCurrency } from "@/lib/format";
 import type { RoutineResolveData, RoutineSource } from "@/lib/routines";
 import { useStoredSkinQuizResult } from "@/hooks/use-stored-skin-quiz-result";
@@ -21,33 +22,6 @@ type RoutineBuilderTriggerProps = {
   label?: string;
   sourceHint?: RoutineSource;
 };
-
-function resolveAssetUrl(value: string | null | undefined) {
-  const normalizedValue = value?.trim() ?? "";
-  if (!normalizedValue) {
-    return null;
-  }
-
-  if (normalizedValue.startsWith("http://") || normalizedValue.startsWith("https://")) {
-    return normalizedValue;
-  }
-
-  if (normalizedValue.startsWith("/")) {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-    if (!apiBaseUrl) {
-      return normalizedValue;
-    }
-
-    const origin = apiBaseUrl.replace(/\/api\/v1\/?$/, "").replace(/\/$/, "");
-    return `${origin}${normalizedValue}`;
-  }
-
-  return null;
-}
-
-function passthroughImageLoader({ src }: { src: string }) {
-  return src;
-}
 
 export function RoutineBuilderTrigger({
   product,

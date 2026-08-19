@@ -1,7 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { RatingStars } from "@/components/shared/rating-stars";
 import { AddToCartButton } from "@/components/store/add-to-cart-button";
+import { passthroughImageLoader, resolveAssetUrl } from "@/lib/assets";
 import { formatCurrency } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
@@ -17,6 +19,7 @@ export function ProductCard({ detailHref, product }: ProductCardProps) {
     ? Math.round(((compareAtPrice - product.price) / compareAtPrice) * 100)
     : 0;
   const productHref = detailHref ?? `/producto/${product.slug}`;
+  const assetUrl = resolveAssetUrl(product.image ?? product.images[0]);
 
   return (
     <article className="group flex h-full flex-col">
@@ -42,11 +45,25 @@ export function ProductCard({ detailHref, product }: ProductCardProps) {
               <span className="text-[11px] text-stone-500">{product.category}</span>
             </div>
 
-            <div className="relative mx-auto flex h-52 w-full items-end justify-center">
-              <div className="absolute left-1/2 top-5 h-24 w-24 -translate-x-1/2 rounded-full bg-white/65 blur-2xl" />
-              <div className="absolute bottom-0 h-44 w-32 rounded-[3.1rem_3.1rem_1.7rem_1.7rem] border border-white/80 bg-white/84" />
-              <div className="absolute bottom-11 h-8 w-16 rounded-full bg-[#ead7c8]/92" />
-              <div className="absolute bottom-4 right-[24%] h-32 w-24 rotate-[8deg] rounded-[1.55rem] border border-white/76 bg-white/70" />
+            <div className="relative mx-auto flex h-52 w-full items-center justify-center overflow-hidden rounded-[2rem] border border-white/70 bg-white/60">
+              {assetUrl ? (
+                <Image
+                  alt={product.name}
+                  className="h-full w-full object-contain p-4"
+                  fill
+                  loader={passthroughImageLoader}
+                  sizes="(min-width: 1280px) 280px, (min-width: 768px) 45vw, 100vw"
+                  src={assetUrl}
+                  unoptimized
+                />
+              ) : (
+                <>
+                  <div className="absolute left-1/2 top-5 h-24 w-24 -translate-x-1/2 rounded-full bg-white/65 blur-2xl" />
+                  <div className="absolute bottom-0 h-44 w-32 rounded-[3.1rem_3.1rem_1.7rem_1.7rem] border border-white/80 bg-white/84" />
+                  <div className="absolute bottom-11 h-8 w-16 rounded-full bg-[#ead7c8]/92" />
+                  <div className="absolute bottom-4 right-[24%] h-32 w-24 rotate-[8deg] rounded-[1.55rem] border border-white/76 bg-white/70" />
+                </>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -77,11 +94,12 @@ export function ProductCard({ detailHref, product }: ProductCardProps) {
           <div className="flex flex-col gap-3 sm:flex-row">
             <AddToCartButton
               className="btn-primary w-full px-4 py-3"
-              label="Anadir a mi rutina"
+              label="Agregar al carrito"
               name={product.name}
               price={product.price}
               productId={product.id}
               slug={product.slug}
+              disabled={product.stock <= 0}
             />
             <Link
               className="btn-secondary w-full px-4 py-3"

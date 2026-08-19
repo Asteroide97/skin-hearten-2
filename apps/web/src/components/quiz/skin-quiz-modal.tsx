@@ -203,6 +203,10 @@ export function SkinQuizModal({ catalogProducts }: SkinQuizModalProps) {
       skin_type: nextResult.answers.skinType,
       source,
     });
+    trackEvent("quiz_result_viewed", {
+      goal: nextResult.answers.goal,
+      source,
+    });
   }
 
   function handleAnswer(questionId: SkinQuizQuestionId, value: SkinQuizAnswers[SkinQuizQuestionId]) {

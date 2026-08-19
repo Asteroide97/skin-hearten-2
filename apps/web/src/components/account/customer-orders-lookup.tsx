@@ -145,6 +145,8 @@ export function CustomerOrdersLookup() {
 
   const activeOrder = activeOrderId ? detailCache[activeOrderId] : null;
   const hasSubmitted = submittedLookup !== null;
+  const supportWhatsAppHref = buildCustomerOrderSupportWhatsAppHref();
+  const activeOrderSupportHref = activeOrder ? buildCustomerOrderSupportWhatsAppHref(activeOrder.orderNumber) : null;
 
   const resultsLabel = useMemo(() => {
     if (orders.length === 1) {
@@ -274,15 +276,17 @@ export function CustomerOrdersLookup() {
             Usa el email o telefono con el que compraste para ver estado de pago, envio, tracking y detalle de tus productos.
           </p>
         </div>
-        <a
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-[#cfe0df] bg-[#eef8f7] px-5 py-3 text-sm font-semibold text-[#2c6160] transition hover:border-[#98b8b6]"
-          href={buildCustomerOrderSupportWhatsAppHref()}
-          rel="noreferrer"
-          target="_blank"
-        >
-          <WhatsAppIcon className="h-4 w-4" />
-          Soporte por WhatsApp
-        </a>
+        {supportWhatsAppHref ? (
+          <a
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#cfe0df] bg-[#eef8f7] px-5 py-3 text-sm font-semibold text-[#2c6160] transition hover:border-[#98b8b6]"
+            href={supportWhatsAppHref}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <WhatsAppIcon className="h-4 w-4" />
+            Soporte por WhatsApp
+          </a>
+        ) : null}
       </div>
 
       <form className="mt-6 grid gap-4 rounded-[1.8rem] border border-stone-200 bg-white p-5 sm:grid-cols-2 sm:p-6" onSubmit={form.handleSubmit(handleLookup)}>
@@ -295,7 +299,7 @@ export function CustomerOrdersLookup() {
         <Field
           error={form.formState.errors.phone?.message}
           label="WhatsApp o telefono"
-          placeholder="+52 55 0000 0000"
+          placeholder="Tu numero con lada"
           registration={form.register("phone")}
         />
         <div className="sm:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -323,15 +327,17 @@ export function CustomerOrdersLookup() {
             <EmptyBlock message={getLookupMessage(lookupErrorReason, hasSubmitted)} />
             {hasSubmitted ? (
               <div className="flex flex-col gap-3 sm:flex-row">
-                <a
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800"
-                  href={buildCustomerOrderSupportWhatsAppHref()}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <WhatsAppIcon className="h-4 w-4" />
-                  Pedir ayuda por WhatsApp
-                </a>
+                {supportWhatsAppHref ? (
+                  <a
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800"
+                    href={supportWhatsAppHref}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <WhatsAppIcon className="h-4 w-4" />
+                    Pedir ayuda por WhatsApp
+                  </a>
+                ) : null}
                 <Link
                   className="inline-flex items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-900 transition hover:border-stone-500"
                   href="/productos"
@@ -513,15 +519,17 @@ export function CustomerOrdersLookup() {
                 </div>
 
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                  <a
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800"
-                    href={buildCustomerOrderSupportWhatsAppHref(activeOrder.orderNumber)}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    <WhatsAppIcon className="h-4 w-4" />
-                    WhatsApp soporte
-                  </a>
+                  {activeOrderSupportHref ? (
+                    <a
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800"
+                      href={activeOrderSupportHref}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <WhatsAppIcon className="h-4 w-4" />
+                      WhatsApp soporte
+                    </a>
+                  ) : null}
                   <button
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-800 transition hover:border-stone-500"
                     onClick={() => {
