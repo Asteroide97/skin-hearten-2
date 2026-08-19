@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --color-canvas: #f5f0e9;
-  --color-surface: #fdf9f4;
-  --color-blush: #f3e8e5;
-  --color-sand: #e9decf;
-  --color-mist: #e4ebe2;
-  --color-line: rgba(35, 28, 22, 0.1);
-  --color-ink: #191411;
-  --shadow-soft: 0 18px 48px rgba(28, 22, 17, 0.05);
-  --shadow-lift: 0 28px 80px rgba(28, 22, 17, 0.08);
+  --color-canvas: #fbf7f2;
+  --color-surface: #fffdfa;
+  --color-blush: #efe2e6;
+  --color-sand: #eadfce;
+  --color-mist: #e4ece9;
+  --color-line: rgba(39, 30, 24, 0.1);
+  --color-ink: #1f1712;
+  --shadow-soft: 0 18px 48px rgba(31, 24, 19, 0.05);
+  --shadow-lift: 0 28px 80px rgba(31, 24, 19, 0.08);
   --radius-panel: 1.5rem;
 }
 
@@ -31,9 +31,9 @@ body {
   overflow-x: clip;
   font-family: var(--font-manrope), sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(246, 226, 219, 0.84), transparent 28%),
-    radial-gradient(circle at right 14%, rgba(235, 225, 213, 0.75), transparent 26%),
-    linear-gradient(180deg, #faf7f2 0%, #f8f4ef 22%, #f5f0e9 100%),
+    radial-gradient(circle at 15% 0%, rgba(234, 214, 225, 0.68), transparent 24%),
+    radial-gradient(circle at 86% 12%, rgba(233, 226, 213, 0.72), transparent 22%),
+    linear-gradient(180deg, #fffdfa 0%, #faf4ee 32%, #fbf7f2 100%),
     var(--color-canvas);
   color: var(--color-ink);
   text-rendering: optimizeLegibility;
@@ -66,7 +66,7 @@ textarea {
 
 .soft-panel {
   border: 1px solid var(--color-line);
-  background: rgba(255, 252, 248, 0.82);
+  background: rgba(255, 253, 250, 0.82);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(18px);
 }
@@ -95,11 +95,11 @@ textarea {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2d241f] disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-900 transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center rounded-full border border-[#dfd4c8] bg-white px-5 py-3 text-sm font-semibold text-stone-900 transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-ghost {
