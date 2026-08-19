@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 
 export const SITE_NAME = "Skin Hearten";
-const DEFAULT_SITE_URL = "https://skinhearten.mx";
+const DEFAULT_SITE_URL = "https://skin-hearten-2-web.vercel.app";
+const rawSiteUrl = [
+  process.env.NEXT_PUBLIC_SITE_URL,
+  process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  process.env.VERCEL_URL,
+  DEFAULT_SITE_URL,
+].find((value) => value?.trim());
 
-export const SITE_URL = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+export const SITE_URL = normalizeSiteUrl(rawSiteUrl);
 export const DEFAULT_OG_IMAGE_PATH = "/opengraph-image";
 
 function normalizeSiteUrl(value?: string) {
@@ -13,7 +19,10 @@ function normalizeSiteUrl(value?: string) {
   }
 
   try {
-    return new URL(trimmedValue).toString().replace(/\/$/, "");
+    const normalizedValue = /^https?:\/\//.test(trimmedValue)
+      ? trimmedValue
+      : `https://${trimmedValue}`;
+    return new URL(normalizedValue).toString().replace(/\/$/, "");
   } catch {
     return DEFAULT_SITE_URL;
   }
