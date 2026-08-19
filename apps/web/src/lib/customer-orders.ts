@@ -1,3 +1,5 @@
+import { buildSupportWhatsAppHref } from "@/lib/support";
+
 export type CustomerOrderStatus =
   | "pending"
   | "paid"
@@ -154,4 +156,3 @@ export function buildCustomerOrderSupportWhatsAppHref(orderNumber?: string) {
     : "Hola Skin Hearten, necesito ayuda con uno de mis pedidos.";
   return buildSupportWhatsAppHref(message);
 }
-import { buildSupportWhatsAppHref } from "@/lib/support";
