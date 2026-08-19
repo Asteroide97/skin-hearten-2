@@ -126,18 +126,34 @@ Para Render o Railway, usa una base Postgres gestionada y apunta `DATABASE_URL` 
 
 ## Opcion B: Azure App Service
 
-1. Despliega `apps/api` como contenedor usando el `Dockerfile`.
-2. Configura App Settings con las variables de entorno.
-3. Si usaras Azure SQL, define `DATABASE_URL` con `mssql+pyodbc://...`.
-4. Ejecuta migraciones una vez en la instancia o en un job:
+Para la fase temporal con SQLite, despliega `apps/api` como una app Python Linux y
+usa `startup.sh` como Startup Command. Configura una sola instancia y estas App
+Settings:
+
+```env
+ENVIRONMENT=production
+DATABASE_URL=sqlite:////home/data/skin_hearten.db
+WEB_CONCURRENCY=1
+FRONTEND_URL=https://skin-hearten-2-web-iota.vercel.app
+BACKEND_CORS_ORIGINS=https://skin-hearten-2-web-iota.vercel.app
+```
+
+Tambien configura `SECRET_KEY`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` exclusivamente
+desde Azure App Service. La app rechaza los placeholders y no arranca en
+produccion si falta alguno. `/home/data/skin_hearten.db` es persistente entre
+reinicios de App Service, pero SQLite sigue siendo temporal y no debe escalarse
+horizontalmente.
+
+El arranque aplica migraciones y ejecuta el bootstrap idempotente del admin:
 
 ```bash
 alembic upgrade head
 python scripts/seed_admin.py
-python scripts/seed_catalog.py
 ```
 
-5. Expone el puerto `8000`.
+No se ejecuta `seed_catalog.py` automaticamente en produccion: el catalogo demo
+no sustituye datos comerciales aprobados. Azure SQL reemplazara esta etapa en el
+siguiente sprint.
 
 Si prefieres una ruta mas simple en Azure, puedes usar Azure Database for PostgreSQL y el mismo `DATABASE_URL` estilo Postgres.
 

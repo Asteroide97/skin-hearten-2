@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterable
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,6 +62,33 @@ class Settings(BaseSettings):
             return [_clean_origin(str(entry)) for entry in value if str(entry).strip()]
 
         raise ValueError("BACKEND_CORS_ORIGINS must be a list")
+
+    @model_validator(mode="after")
+    def validate_production_settings(self) -> "Settings":
+        if self.environment.strip().lower() != "production":
+            return self
+
+        required_environment_variables = (
+            "SECRET_KEY",
+            "ADMIN_EMAIL",
+            "ADMIN_PASSWORD",
+            "DATABASE_URL",
+            "FRONTEND_URL",
+        )
+        missing = [name for name in required_environment_variables if not os.getenv(name, "").strip()]
+        if missing:
+            raise ValueError(f"Missing required production environment variables: {', '.join(missing)}")
+
+        if self.secret_key.strip() in {"change-me", "change-this-secret", "dev-secret"}:
+            raise ValueError("SECRET_KEY must not use a development placeholder in production")
+
+        if self.database_url.startswith("sqlite") and not self.database_url.startswith("sqlite:////home/"):
+            raise ValueError("Production SQLite must use an absolute persistent path under /home")
+
+        if not self.frontend_url.startswith("https://"):
+            raise ValueError("FRONTEND_URL must use HTTPS in production")
+
+        return self
 
     @property
     def jwt_expire_minutes(self) -> int:

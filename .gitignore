@@ -22,3 +22,6 @@ Thumbs.db
 .codex-artifacts/
 .local-*.log
 apps/web/.local-*.log
+.vercel
+.env*
+*.tsbuildinfo
