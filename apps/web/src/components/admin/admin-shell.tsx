@@ -4,27 +4,17 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AdminGlobalSearch } from "@/components/admin/admin-global-search";
 import { ADMIN_LOGIN_PATH } from "@/lib/admin-session";
 
 const sections = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/contenido-comercial", label: "Contenido Comercial" },
-  { href: "/admin/intelligence", label: "Centro de Inteligencia", matchStartsWith: "/admin/intelligence" },
-  { href: "/admin/intelligence/analytics", label: "Analisis" },
-  { href: "/admin/productos", label: "Productos" },
-  { href: "/admin/rutinas", label: "Rutinas" },
-  { href: "/admin/cupones", label: "Cupones" },
-  { href: "/admin/reviews", label: "Resenas" },
+  { href: "/admin", label: "Inicio" },
   { href: "/admin/pedidos", label: "Pedidos" },
+  { href: "/admin/productos", label: "Productos" },
   { href: "/admin/clientes", label: "Clientes" },
-  { href: "/admin/imports/shopify", label: "Importar Shopify" },
-  { href: "/admin/crm", label: "CRM" },
-  { href: "/admin/crm/reminders", label: "Recordatorios" },
-  { href: "/admin/crm/templates", label: "Plantillas CRM" },
-  { href: "/admin/crm/automations", label: "Automatizaciones" },
-  { href: "/admin/skin-quiz-analytics", label: "Skin Quiz Analytics" },
-  { href: "/admin/skin-quiz-leads", label: "Skin Quiz Leads" },
 ];
+
+const futureSections = ["Carritos", "Quiz de piel", "Marketing", "Descuentos", "Recompra", "Reviews", "Contenido", "Analitica", "Inventario", "Configuracion"];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -41,15 +31,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   function isSectionActive(section: (typeof sections)[number]) {
-    if (pathname === section.href) {
-      return true;
-    }
-
-    if (section.matchStartsWith) {
-      return pathname.startsWith(section.matchStartsWith);
-    }
-
-    return false;
+    return section.href === "/admin" ? pathname === section.href : pathname === section.href || pathname.startsWith(`${section.href}/`);
   }
 
   async function handleSignOut() {
@@ -76,9 +58,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <div>
                   <p className="section-label">Skin Hearten Admin</p>
                   <p className="mt-2 font-serif text-[1.9rem] leading-none text-stone-950">SuperAdmin</p>
-                  <p className="mt-3 text-sm leading-6 text-stone-600">
-                    Operacion compacta para catalogo, clientes, pedidos y decisiones.
-                  </p>
                 </div>
                 <button
                   className="btn-ghost border border-stone-300 px-3 py-2 text-[11px]"
@@ -112,16 +91,28 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   );
                 })}
               </nav>
+              <div className="mt-6 border-t border-stone-200 pt-5">
+                <p className="section-label px-3">Proximamente</p>
+                <div className="mt-2 space-y-1">
+                  {futureSections.map((label) => (
+                    <span className="flex cursor-not-allowed items-center justify-between rounded-[1rem] px-3.5 py-2.5 text-sm text-stone-400" key={label}>
+                      {label}
+                      <span className="text-[10px]">Pronto</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           </aside>
 
           <div className="min-w-0 space-y-4">
-            <div className="sticky top-2 z-30 rounded-[1.2rem] border border-stone-200 bg-[#fbf7f2]/95 px-3 py-3 backdrop-blur sm:px-4 xl:hidden">
+            <div className="sticky top-2 z-30 rounded-[1.2rem] border border-stone-200 bg-[#fbf7f2]/95 px-3 py-3 backdrop-blur sm:px-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="section-label">Skin Hearten Admin</p>
-                  <p className="mt-1 truncate font-serif text-[1.55rem] text-stone-950 sm:text-2xl">SuperAdmin</p>
+                  <p className="section-label xl:hidden">Skin Hearten Admin</p>
+                  <p className="mt-1 truncate font-serif text-[1.55rem] text-stone-950 xl:hidden sm:text-2xl">SuperAdmin</p>
                 </div>
+                <div className="hidden flex-1 justify-center xl:flex"><AdminGlobalSearch /></div>
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                   <button
                     className="btn-secondary px-3 py-2 text-xs"
@@ -144,6 +135,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   </button>
                 </div>
               </div>
+              <div className="mt-3 xl:hidden"><AdminGlobalSearch /></div>
             </div>
 
             {children}

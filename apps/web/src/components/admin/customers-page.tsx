@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useDeferredValue, useEffect, useState } from "react";
 
 import { ArrowUpRightIcon, SearchIcon, WhatsAppIcon } from "@/components/shared/icons";
@@ -414,15 +415,9 @@ export function CustomersPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            className="rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-800 transition hover:border-stone-500"
-                            onClick={() => {
-                              void handleOpenDetail(customer.id);
-                            }}
-                            type="button"
-                          >
+                          <Link className="rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-800 transition hover:border-stone-500" href={`/admin/clientes/${customer.id}`}>
                             Ver detalle
-                          </button>
+                          </Link>
                         </td>
                       </tr>
                     ))
