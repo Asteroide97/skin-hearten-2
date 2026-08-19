@@ -44,8 +44,12 @@ export function SiteHeader({ catalogProducts, commercialContent }: SiteHeaderPro
   const itemCount = useCartStore((state) =>
     state.items.reduce((sum, item) => sum + item.quantity, 0),
   );
-  const primaryNavItems = sortCommercialItems(commercialContent.navigation).filter((item) => item.active);
-  const quickAccessItems = sortCommercialItems(commercialContent.quickLinks).filter((item) => item.active);
+  const primaryNavItems = sortCommercialItems(commercialContent.navigation)
+    .filter((item) => item.active)
+    .slice(0, 4);
+  const quickAccessItems = sortCommercialItems(commercialContent.quickLinks)
+    .filter((item) => item.active)
+    .slice(0, 4);
   const supportWhatsAppUrl = commercialContent.header.supportWhatsAppUrl?.trim() || null;
   const headerMessage = useMemo(() => {
     const values = [

@@ -74,20 +74,17 @@ export function NewsletterSignup() {
   }
 
   return (
-    <section className="overflow-hidden rounded-[2.8rem] border border-[#ece3d8] bg-[linear-gradient(135deg,#fbf5ef_0%,#f2e8ed_100%)] px-5 py-8 sm:px-6 lg:px-8 lg:py-10">
-      <div className="grid gap-8 lg:grid-cols-[0.74fr_1.26fr] lg:items-start">
-        <div className="space-y-4">
-          <p className="section-label">Newsletter</p>
-          <h2 className="max-w-[12ch] text-[2.8rem] font-semibold leading-[0.94] tracking-[-0.06em] text-stone-950 sm:text-[3.35rem]">
-            Novedades utiles. Sin ruido.
+    <section className="overflow-hidden rounded-[2.4rem] border border-[#ece3d8] bg-[linear-gradient(135deg,#fbf5ef_0%,#f2e8ed_100%)] px-6 py-8 sm:px-8 lg:px-10">
+      <div className="grid gap-6 lg:grid-cols-[0.65fr_1.35fr] lg:items-center">
+        <div>
+          <p className="section-label">NEWSLETTER</p>
+          <h2 className="mt-3 max-w-[10ch] text-[2.5rem] font-semibold leading-[0.94] tracking-[-0.06em] text-stone-950 sm:text-[3.1rem]">
+            Novedades, sin ruido.
           </h2>
-          <p className="max-w-xl text-base leading-8 text-stone-600">
-            Guias cortas, lanzamientos y recordatorios de rutina. Solo te escribimos si aceptas recibir comunicacion comercial y educativa.
-          </p>
         </div>
 
         <form
-          className="grid gap-4 rounded-[2rem] border border-white/70 bg-white/88 p-5 shadow-[0_18px_44px_rgba(31,24,19,0.06)] sm:p-6"
+          className="grid gap-3 rounded-[1.8rem] border border-white/70 bg-white/88 p-5 shadow-[0_18px_44px_rgba(31,24,19,0.06)]"
           onSubmit={form.handleSubmit(handleSubmit)}
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -116,11 +113,9 @@ export function NewsletterSignup() {
             </label>
           </div>
 
-          <label className="flex items-start gap-3 rounded-[1.25rem] border border-[#ece3d8] bg-[#fdf8f4] px-4 py-4 text-sm leading-6 text-stone-600">
+          <label className="flex items-start gap-3 px-1 py-1 text-xs leading-5 text-stone-600">
             <input className="mt-1 h-4 w-4" type="checkbox" {...form.register("acceptedMarketing")} />
-            <span>
-              Acepto recibir comunicacion comercial y educativa de Skin Hearten en este email.
-            </span>
+            <span>Acepto recibir novedades de Skin Hearten.</span>
           </label>
           {form.formState.errors.acceptedMarketing?.message ? (
             <p className="text-xs text-red-600">{form.formState.errors.acceptedMarketing.message}</p>
@@ -138,10 +133,7 @@ export function NewsletterSignup() {
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="max-w-md text-xs leading-6 text-stone-500">
-              Si la API publica no esta configurada, te lo mostramos con error claro. No fingimos suscripciones activas.
-            </p>
+          <div className="flex justify-end">
             <button
               className="btn-primary px-5 py-3.5"
               disabled={form.formState.isSubmitting}

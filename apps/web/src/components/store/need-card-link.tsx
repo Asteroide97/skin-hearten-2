@@ -36,18 +36,15 @@ export function NeedCardLink({
       <div className="absolute right-5 top-5 rounded-full border border-[#ebe1d6] bg-[#fbf5ef] p-2 text-stone-700 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
         <ArrowUpRightIcon />
       </div>
-      <div className="relative flex min-h-[240px] flex-col justify-between p-6">
+      <div className="relative flex min-h-[190px] flex-col justify-between p-6">
         <div>
           <p className="section-label">{eyebrow}</p>
-          <h3 className="mt-10 max-w-[10rem] text-[1.9rem] font-semibold leading-[0.96] tracking-[-0.05em] text-stone-950">
+          <h3 className="mt-7 max-w-[10rem] text-[1.9rem] font-semibold leading-[0.96] tracking-[-0.05em] text-stone-950">
             {title}
           </h3>
-          <p className="mt-4 max-w-sm text-sm leading-7 text-stone-600">{description}</p>
+          <p className="mt-3 max-w-sm text-sm leading-6 text-stone-600">{description}</p>
         </div>
-        <div className="flex items-center justify-between gap-4 border-t border-[#eee5da] pt-4">
-          <p className="text-sm font-semibold text-stone-900">Ver seleccion</p>
-          <span className="text-sm text-stone-500">Explorar</span>
-        </div>
+        <p className="mt-5 text-sm font-semibold text-stone-900">Ver seleccion</p>
       </div>
     </Link>
   );
